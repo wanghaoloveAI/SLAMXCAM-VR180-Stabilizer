@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Build artifacts
+build/
+dist/
+*.spec
+
+# Generated outputs and local media samples
+outputs/
+*.mp4
+*.mov
+*.mkv
+*.avi
+*.jpg
+*.jpeg
+*.png
+*_imu.csv
+*_pair_report.json
+*.plan.json
+
+# Downloaded installers / local tools
+rustup-init.exe
+
+# Local reference checkouts
+reference/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+

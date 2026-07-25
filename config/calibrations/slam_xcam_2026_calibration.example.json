@@ -1,0 +1,35 @@
+{
+  "version": "1.0",
+  "camera_model": "slam_xcam_2026",
+  "sensor": "private",
+  "source_schema": "example_public_fisheye_calibration_v1",
+  "gyro_units": "rad_s",
+  "image_size": {
+    "width": 3000,
+    "height": 3000
+  },
+  "notes": "Public placeholder calibration. Replace with a private, measured calibration file for production stabilization.",
+  "left": {
+    "projection": "equidistant",
+    "distortion_model": "none",
+    "fx": 1000.0,
+    "fy": 1000.0,
+    "cx": 1500.0,
+    "cy": 1500.0,
+    "distortion": [0.0, 0.0, 0.0, 0.0]
+  },
+  "right": {
+    "projection": "equidistant",
+    "distortion_model": "none",
+    "fx": 1000.0,
+    "fy": 1000.0,
+    "cx": 1500.0,
+    "cy": 1500.0,
+    "distortion": [0.0, 0.0, 0.0, 0.0]
+  },
+  "imu_to_camera_rotation": [
+    1.0, 0.0, 0.0,
+    0.0, 1.0, 0.0,
+    0.0, 0.0, 1.0
+  ]
+}

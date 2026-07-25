@@ -1,0 +1,16 @@
+{
+  "name": "SLAM XCAM 2026",
+  "camera_model": "slam_xcam_2026",
+  "sensor": "private",
+  "gyro_units": "rad_s",
+  "default_imu_rate_hz": 200,
+  "projection": "equidistant",
+  "default_calibration": "../calibrations/slam_xcam_2026_calibration.example.json",
+  "notes": "SLAM XCAM 2026 public profile. Replace the example calibration with a private measured calibration for production use.",
+  "output": {
+    "projection": "fisheye",
+    "stereo_mode": "left_right",
+    "field_of_view_degrees": 180
+  }
+}
+

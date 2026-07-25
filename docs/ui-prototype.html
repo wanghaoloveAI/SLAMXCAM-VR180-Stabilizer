@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SLAM XCAM Spatial Video Stabilizer UI Prototype</title>
+  <style>
+    :root {
+      --bg: #f5f6f8;
+      --panel: #ffffff;
+      --line: #d9dee7;
+      --text: #111827;
+      --muted: #6b7280;
+      --blue: #1769e0;
+      --blue-weak: #e8f1ff;
+      --green: #12805c;
+      --warn: #b7791f;
+      --dark: #0d1117;
+      --dark-2: #151b23;
+      --shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+      letter-spacing: 0;
+    }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 16px;
+      padding: 18px;
+    }
+
+    .titlebar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #0f172a, #1f6feb);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.2;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(320px, 380px) minmax(560px, 1fr);
+      gap: 16px;
+      min-height: 0;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .media {
+      padding: 18px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 18px;
+      min-height: 100%;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .section-title h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      background: #eef2f7;
+      border: 1px solid #d7dde7;
+      border-radius: 8px;
+      padding: 4px;
+    }
+
+    .tab {
+      min-height: 36px;
+      border-radius: 6px;
+      background: transparent;
+      color: #4b5563;
+      border: 0;
+      padding: 8px 10px;
+      font-weight: 700;
+    }
+
+    .tab.active {
+      background: #ffffff;
+      color: var(--blue);
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.1);
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    .tab-content {
+      min-height: 0;
+      overflow: auto;
+      padding-right: 2px;
+    }
+
+    .start-area {
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+      margin-top: 14px;
+    }
+
+    .compact-fields .field {
+      gap: 4px;
+      margin-top: 9px;
+    }
+
+    .compact-fields input[type="range"] {
+      min-height: 26px;
+    }
+
+    label {
+      color: #374151;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    select,
+    input[type="text"],
+    input[type="range"] {
+      width: 100%;
+      min-height: 40px;
+    }
+
+    select,
+    input[type="text"] {
+      border: 1px solid #cfd6df;
+      border-radius: 6px;
+      padding: 8px 10px;
+      background: #fff;
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    input[type="range"] {
+      accent-color: var(--blue);
+    }
+
+    .slider-value {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .lut-note {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .algorithm-info {
+      display: grid;
+      gap: 6px;
+      margin-top: 8px;
+      min-height: 118px;
+      padding: 12px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      color: #4b5563;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .algorithm-info strong {
+      color: #111827;
+    }
+
+    .file-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    button {
+      min-height: 40px;
+      border: 0;
+      border-radius: 6px;
+      padding: 9px 14px;
+      background: var(--blue);
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    button.secondary {
+      background: #eef2f7;
+      color: #1f2937;
+      border: 1px solid #cfd6df;
+    }
+
+    button.primary {
+      width: 100%;
+      min-height: 46px;
+      margin-top: 4px;
+      font-size: 15px;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .auto-match {
+      background: var(--blue-weak);
+      border: 1px solid #c7dcff;
+      border-radius: 8px;
+      padding: 10px;
+      color: #1f4e8c;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .preview {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .preview-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .preview-head h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .preview-details {
+      display: grid;
+      gap: 4px;
+      margin-top: 7px;
+    }
+
+    .meta {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .path-line {
+      max-width: 100%;
+      color: #4b5563;
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .viewer {
+      min-height: 360px;
+      background: var(--dark);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .fisheye-frame {
+      width: min(100%, 860px);
+      aspect-ratio: 2 / 1;
+      border-radius: 8px;
+      background:
+        radial-gradient(circle at 25% 50%, rgba(255,255,255,.9) 0 2%, rgba(100,149,237,.36) 3% 35%, rgba(0,0,0,.75) 36% 47%, transparent 48%),
+        radial-gradient(circle at 75% 50%, rgba(255,255,255,.9) 0 2%, rgba(100,149,237,.36) 3% 35%, rgba(0,0,0,.75) 36% 47%, transparent 48%),
+        linear-gradient(90deg, #111827, #1f2937);
+      border: 1px solid #263241;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .fisheye-frame::before {
+      content: "VR1803D preview";
+      position: absolute;
+      left: 18px;
+      top: 14px;
+      color: #dbeafe;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .fisheye-frame::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent calc(50% - 1px), rgba(255,255,255,.2) 50%, transparent calc(50% + 1px));
+    }
+
+    .job {
+      padding: 16px 18px 18px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .progress-line {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 12px;
+      color: #374151;
+      font-size: 13px;
+    }
+
+    .bar {
+      height: 8px;
+      background: #e5e7eb;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar > div {
+      width: 0%;
+      height: 100%;
+      background: var(--blue);
+      transition: width .25s ease;
+    }
+
+    .log {
+      padding: 14px 16px;
+    }
+
+    .log h2 {
+      margin: 0 0 10px;
+      font-size: 16px;
+    }
+
+    pre {
+      margin: 0;
+      min-height: 110px;
+      max-height: 160px;
+      overflow: auto;
+      background: #ffffff;
+      border: 1px solid #cfd6df;
+      border-radius: 8px;
+      padding: 12px;
+      color: #0f172a;
+      font: 13px/1.5 Consolas, "Courier New", monospace;
+      white-space: pre-wrap;
+    }
+
+    @media (max-width: 960px) {
+      .app {
+        padding: 12px;
+      }
+
+      .titlebar,
+      .workspace {
+        grid-template-columns: 1fr;
+        display: grid;
+      }
+
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="titlebar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <h1>SLAM XCAM Spatial Video Stabilizer</h1>
+      </div>
+    </header>
+
+    <section class="workspace">
+      <aside class="panel media">
+        <div class="tabs" role="tablist" aria-label="Settings">
+          <button class="tab active" type="button" data-tab="mediaSetting">Media Setting</button>
+          <button class="tab" type="button" data-tab="colorCorrection">Color Correction</button>
+          <button class="tab" type="button" data-tab="algorithmStrategy">算法策略</button>
+        </div>
+
+        <div class="tab-content">
+          <div class="tab-panel active" id="mediaSetting">
+            <div class="section-title">
+              <h2>Media Setting</h2>
+            </div>
+
+            <div class="field">
+              <label for="model">SLAM XCAM Model</label>
+              <select id="model">
+                <option value="2025">2025</option>
+                <option value="2026" selected>2026</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="videoMode">Video mode</label>
+              <select id="videoMode">
+                <option>VR1803D 鱼眼</option>
+                <option>VR1803D 等轴距投影</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label>Choose video</label>
+              <div class="file-row">
+                <input id="videoPath" type="text" value="D:\path\input.mp4">
+                <button type="button" id="chooseVideo">Choose video</button>
+              </div>
+              <div class="hint">选择视频后自动查找同目录同名 IMU，例如 <b>video_imu.csv</b>。</div>
+            </div>
+
+            <div class="field">
+              <label>Choose IMU</label>
+              <div class="file-row">
+                <input id="imuPath" type="text" value="D:\path\input_imu.csv">
+                <button class="secondary" type="button" id="chooseImu">Choose IMU</button>
+              </div>
+            </div>
+
+            <div class="auto-match" id="autoMatch">
+              Auto matched IMU: Slam_20260620_162535_456_imu.csv
+            </div>
+          </div>
+
+          <div class="tab-panel compact-fields" id="colorCorrection">
+            <div class="section-title">
+              <h2>Color Correction</h2>
+            </div>
+
+            <div class="field">
+              <label for="lutSelect">LUT</label>
+              <select id="lutSelect">
+                <option value="none">None</option>
+                <option value="slam-natural">SLAM Natural</option>
+                <option value="vr180-soft-contrast">VR180 Soft Contrast</option>
+                <option value="indoor-warm">Indoor Warm</option>
+                <option value="outdoor-clear">Outdoor Clear</option>
+                <option value="skin-tone-protect">Skin Tone Protect</option>
+                <option value="flat-log-preview">Flat Log Preview</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="exposure">Exposure</label>
+              <input id="exposure" type="range" min="-2" max="2" step="0.1" value="0">
+              <div class="slider-value" id="exposureValue">0.0 EV</div>
+            </div>
+
+            <div class="field">
+              <label for="contrast">Contrast</label>
+              <input id="contrast" type="range" min="-50" max="50" step="1" value="0">
+              <div class="slider-value" id="contrastValue">0</div>
+            </div>
+
+            <div class="field">
+              <label for="saturation">Saturation</label>
+              <input id="saturation" type="range" min="-50" max="50" step="1" value="0">
+              <div class="slider-value" id="saturationValue">0</div>
+            </div>
+
+            <div class="field">
+              <label for="temperature">White balance</label>
+              <input id="temperature" type="range" min="-100" max="100" step="1" value="0">
+              <div class="slider-value" id="temperatureValue">0</div>
+            </div>
+
+            <div class="lut-note">LUT library: <code>config/luts/library.json</code>. LUT files will be added under <code>config/luts/files/</code>.</div>
+          </div>
+
+          <div class="tab-panel compact-fields" id="algorithmStrategy">
+            <div class="section-title">
+              <h2>算法策略</h2>
+            </div>
+
+            <div class="field">
+              <label>IMU处理算法</label>
+              <select id="imuAlgorithm">
+                <option value="gyro-quaternion-smoothing">Gyro Quaternion Smoothing</option>
+                <option value="gyro-acc-fusion">Gyro + Accelerometer Fusion</option>
+                <option value="gyroflow-style">Gyroflow-style Smoothing</option>
+                <option value="rolling-shutter-aware">Rolling Shutter Aware</option>
+              </select>
+              <div class="algorithm-info" id="imuAlgorithmInfo">
+                <strong>IMU orientation smoothing</strong>
+                <span>Uses gyro/quaternion samples to build a smoothed camera trajectory and generate per-frame correction matrices.</span>
+                <span>Status: prototype implementation active.</span>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>图像处理算法</label>
+              <select id="imageAlgorithm">
+                <option value="reference-renderer">Reference Renderer: 标定鱼眼重投影</option>
+                <option value="stmap-renderer">STMap Renderer: STMap 查表重映射</option>
+              </select>
+              <div class="algorithm-info" id="imageAlgorithmInfo">
+                <strong>Calibrated fisheye reprojection</strong>
+                <span>Projects each VR180 output ray back into the source fisheye image using the selected lens calibration.</span>
+                <span>Status: CPU reference renderer active; GPU renderer planned.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="start-area">
+          <button class="primary" type="button" id="start">Start Stabilization</button>
+        </div>
+      </aside>
+
+      <section class="panel preview">
+        <div class="preview-head">
+          <div>
+            <h2 id="previewTitle">Slam_20260620_162535_456.mp4</h2>
+            <div class="preview-details">
+              <div class="meta" id="previewMeta">SLAM XCAM Model 2026 · VR1803D 鱼眼 · IMU Quaternion Smoothing + Fisheye Reprojection · 00:06.62 · 7680 x 3840</div>
+              <div class="path-line" id="videoFolder">Video folder: D:\path</div>
+              <div class="path-line" id="saveFolder">Save folder: D:\path</div>
+            </div>
+          </div>
+          <button class="secondary" type="button">Play / Pause</button>
+        </div>
+
+        <div class="viewer">
+          <div class="fisheye-frame" aria-label="VR1803D preview placeholder"></div>
+        </div>
+
+        <div class="job">
+          <div class="progress-line">
+            <span id="progressText">Ready</span>
+            <span id="progressPercent">0%</span>
+          </div>
+          <div class="bar"><div id="barFill"></div></div>
+          <div class="meta" id="timeMeta">Elapsed 00:00 · ETA --:--</div>
+        </div>
+      </section>
+    </section>
+
+    <section class="panel log">
+      <h2>Job Log</h2>
+      <pre id="log">Ready.
+Selected model: SLAM XCAM 2026
+Calibration: slam_xcam_2026_calibration.example.json
+Video mode: VR1803D 鱼眼</pre>
+    </section>
+  </main>
+
+  <script>
+    const model = document.querySelector("#model");
+    const videoMode = document.querySelector("#videoMode");
+    const videoPath = document.querySelector("#videoPath");
+    const imuPath = document.querySelector("#imuPath");
+    const log = document.querySelector("#log");
+    const previewTitle = document.querySelector("#previewTitle");
+    const previewMeta = document.querySelector("#previewMeta");
+    const videoFolder = document.querySelector("#videoFolder");
+    const saveFolder = document.querySelector("#saveFolder");
+    const autoMatch = document.querySelector("#autoMatch");
+    const barFill = document.querySelector("#barFill");
+    const progressText = document.querySelector("#progressText");
+    const progressPercent = document.querySelector("#progressPercent");
+    const timeMeta = document.querySelector("#timeMeta");
+    const tabs = document.querySelectorAll(".tab");
+    const tabPanels = document.querySelectorAll(".tab-panel");
+    const sliders = [
+      ["exposure", "exposureValue", value => `${Number(value).toFixed(1)} EV`],
+      ["contrast", "contrastValue", value => value],
+      ["saturation", "saturationValue", value => value],
+      ["temperature", "temperatureValue", value => value]
+    ];
+    const lutSelect = document.querySelector("#lutSelect");
+    const imuAlgorithm = document.querySelector("#imuAlgorithm");
+    const imageAlgorithm = document.querySelector("#imageAlgorithm");
+    const imuAlgorithmInfo = document.querySelector("#imuAlgorithmInfo");
+    const imageAlgorithmInfo = document.querySelector("#imageAlgorithmInfo");
+
+    const imuAlgorithmDescriptions = {
+      "gyro-quaternion-smoothing": [
+        "IMU orientation smoothing",
+        "Uses gyro/quaternion samples to build a smoothed camera trajectory and generate per-frame correction matrices.",
+        "Status: prototype implementation active."
+      ],
+      "gyro-acc-fusion": [
+        "Gyro + accelerometer fusion",
+        "Combines gyro motion with gravity direction from accelerometer data to reduce long-term drift.",
+        "Status: planned."
+      ],
+      "gyroflow-style": [
+        "Gyroflow-style smoothing",
+        "A reference strategy inspired by mature gyro stabilization workflows, with stronger control over smoothing windows.",
+        "Status: planned."
+      ],
+      "rolling-shutter-aware": [
+        "Rolling shutter aware correction",
+        "Uses time-dependent correction across the frame instead of one correction matrix per frame.",
+        "Status: planned."
+      ]
+    };
+
+    const imageAlgorithmDescriptions = {
+      "reference-renderer": [
+        "Reference Renderer: 标定鱼眼重投影",
+        "算法路径是 ray-based reprojection：输出像素变成 VR180 ray，乘以 IMU 防抖旋转，再用镜头 K/D 参数投影回原始鱼眼画面。",
+        "Status: active. 执行芯片由渲染设备策略选择。"
+      ],
+      "stmap-renderer": [
+        "STMap Renderer: STMap 查表重映射",
+        "使用预计算 STMap 作为镜头映射表，减少实时投影计算。后续会绑定本地模型 STMap 文件。",
+        "Status: planned."
+      ]
+    };
+
+    const calibrations = {
+      "2025": "slam_xcam_2025_calibration.example.json",
+      "2026": "slam_xcam_2026_calibration.example.json"
+    };
+
+    const videoInfo = {
+      "Slam_20260620_162535_456.mp4": {
+        duration: "00:06.62",
+        size: "7680 x 3840"
+      },
+      "Slam_20260622_024349_862.mp4": {
+        duration: "00:06.59",
+        size: "7680 x 3840"
+      }
+    };
+
+    function fileName(path) {
+      return path.split(/[\\/]/).filter(Boolean).pop() || "No file selected";
+    }
+
+    function folderName(path) {
+      const normalized = path.replace(/[\\/][^\\/]*$/, "");
+      return normalized || "--";
+    }
+
+    function imuCandidate(path) {
+      return path.replace(/\.[^.]+$/, "_imu.csv");
+    }
+
+    function refresh() {
+      const cal = calibrations[model.value];
+      const name = fileName(videoPath.value);
+      const info = videoInfo[name] || { duration: "--:--", size: "--" };
+      const algorithm = "IMU Quaternion Smoothing + Fisheye Reprojection";
+      const imuInfo = imuAlgorithmDescriptions[imuAlgorithm.value];
+      const imageInfo = imageAlgorithmDescriptions[imageAlgorithm.value];
+      previewTitle.textContent = name;
+      previewMeta.textContent = `SLAM XCAM Model ${model.value} · ${videoMode.value} · ${algorithm} · ${info.duration} · ${info.size}`;
+      videoFolder.textContent = `Video folder: ${folderName(videoPath.value)}`;
+      saveFolder.textContent = `Save folder: ${folderName(videoPath.value)}`;
+      imuAlgorithmInfo.innerHTML = `<strong>${imuInfo[0]}</strong><span>${imuInfo[1]}</span><span>${imuInfo[2]}</span>`;
+      imageAlgorithmInfo.innerHTML = `<strong>${imageInfo[0]}</strong><span>${imageInfo[1]}</span><span>${imageInfo[2]}</span>`;
+      log.textContent = [
+        "Ready.",
+        `Selected model: SLAM XCAM ${model.value}`,
+        `Calibration: ${cal}`,
+        `Video mode: ${videoMode.value}`,
+        `LUT: ${lutSelect.value}`,
+        `IMU algorithm: ${imuAlgorithm.value}`,
+        `Image algorithm: ${imageAlgorithm.value}`,
+        `Video: ${videoPath.value}`,
+        `IMU: ${imuPath.value}`
+      ].join("\n");
+    }
+
+    document.querySelector("#chooseVideo").addEventListener("click", () => {
+      const demo = "D:\\path\\input.mp4";
+      videoPath.value = demo;
+      imuPath.value = imuCandidate(demo);
+      autoMatch.textContent = `Auto matched IMU: ${fileName(imuPath.value)}`;
+      refresh();
+    });
+
+    document.querySelector("#chooseImu").addEventListener("click", () => {
+      imuPath.value = "D:\\path\\manual_selected_imu.csv";
+      autoMatch.textContent = "Manual IMU selected.";
+      refresh();
+    });
+
+    model.addEventListener("change", refresh);
+    videoMode.addEventListener("change", refresh);
+    lutSelect.addEventListener("change", refresh);
+    imuAlgorithm.addEventListener("change", refresh);
+    imageAlgorithm.addEventListener("change", refresh);
+    videoPath.addEventListener("input", refresh);
+    imuPath.addEventListener("input", refresh);
+
+    document.querySelector("#start").addEventListener("click", () => {
+      let progress = 0;
+      const started = Date.now();
+      log.textContent += "\n\nStarting stabilization...";
+      const timer = setInterval(() => {
+        progress += Math.ceil(Math.random() * 8);
+        if (progress >= 100) {
+          progress = 100;
+          clearInterval(timer);
+          progressText.textContent = "Complete";
+          timeMeta.textContent = "Elapsed 00:08 · ETA 00:00";
+          log.textContent += "\nComplete. Output saved next to source video.";
+        } else {
+          progressText.textContent = "Rendering stabilized frames";
+          const elapsed = Math.floor((Date.now() - started) / 1000);
+          const eta = Math.max(1, Math.floor(elapsed * (100 - progress) / Math.max(progress, 1)));
+          timeMeta.textContent = `Elapsed 00:${String(elapsed).padStart(2, "0")} · ETA 00:${String(eta).padStart(2, "0")}`;
+        }
+        barFill.style.width = `${progress}%`;
+        progressPercent.textContent = `${progress}%`;
+      }, 450);
+    });
+
+    tabs.forEach(tab => {
+      tab.addEventListener("click", () => {
+        tabs.forEach(item => item.classList.remove("active"));
+        tabPanels.forEach(panel => panel.classList.remove("active"));
+        tab.classList.add("active");
+        document.querySelector(`#${tab.dataset.tab}`).classList.add("active");
+      });
+    });
+
+    sliders.forEach(([inputId, valueId, format]) => {
+      const input = document.querySelector(`#${inputId}`);
+      const value = document.querySelector(`#${valueId}`);
+      input.addEventListener("input", () => {
+        value.textContent = format(input.value);
+      });
+    });
+
+    refresh();
+  </script>
+</body>
+</html>

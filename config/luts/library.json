@@ -1,0 +1,57 @@
+{
+  "version": "1.0",
+  "library_name": "SLAM XCAM LUT Library",
+  "default_lut": "none",
+  "supported_formats": [".cube", ".3dl"],
+  "luts": [
+    {
+      "id": "none",
+      "name": "None",
+      "category": "Built-in",
+      "file": null,
+      "description": "No LUT applied."
+    },
+    {
+      "id": "slam-natural",
+      "name": "SLAM Natural",
+      "category": "SLAM XCAM",
+      "file": "files/slam-natural.cube",
+      "description": "Neutral color baseline for SLAM XCAM footage."
+    },
+    {
+      "id": "vr180-soft-contrast",
+      "name": "VR180 Soft Contrast",
+      "category": "VR180",
+      "file": "files/vr180-soft-contrast.cube",
+      "description": "Mild contrast curve designed for VR180 viewing."
+    },
+    {
+      "id": "indoor-warm",
+      "name": "Indoor Warm",
+      "category": "Scene",
+      "file": "files/indoor-warm.cube",
+      "description": "Warm indoor correction preset."
+    },
+    {
+      "id": "outdoor-clear",
+      "name": "Outdoor Clear",
+      "category": "Scene",
+      "file": "files/outdoor-clear.cube",
+      "description": "Outdoor daylight clarity preset."
+    },
+    {
+      "id": "skin-tone-protect",
+      "name": "Skin Tone Protect",
+      "category": "Portrait",
+      "file": "files/skin-tone-protect.cube",
+      "description": "Skin-tone-preserving color preset."
+    },
+    {
+      "id": "flat-log-preview",
+      "name": "Flat Log Preview",
+      "category": "Technical",
+      "file": "files/flat-log-preview.cube",
+      "description": "Preview transform for flatter source material."
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SLAM XCAM VR180 Calibration",
+  "type": "object",
+  "required": ["version", "camera_model", "left", "right"],
+  "properties": {
+    "version": { "type": "string" },
+    "camera_model": { "type": "string" },
+    "sensor": { "type": "string" },
+    "source_file": { "type": "string" },
+    "source_schema": { "type": "string" },
+    "extraction_script": { "type": "string" },
+    "opencv_version": { "type": "string" },
+    "gyro_units": { "enum": ["rad_s", "deg_s"] },
+    "image_size": {
+      "type": "object",
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "number" },
+        "height": { "type": "number" }
+      }
+    },
+    "rms_reprojection_error_px": { "type": "number" },
+    "source_quality": { "type": "object" },
+    "source_left": { "type": "object" },
+    "source_right": { "type": "object" },
+    "notes": { "type": "string" },
+    "stmap": {
+      "type": "object"
+    },
+    "left": { "$ref": "#/$defs/lens" },
+    "right": { "$ref": "#/$defs/lens" },
+    "stereo": {
+      "type": "object",
+      "properties": {
+        "baseline_m": { "type": "number" },
+        "right_from_left_rotation": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 9,
+          "maxItems": 9
+        },
+        "right_from_left_translation_m": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      }
+    },
+    "imu_to_camera_rotation": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 9,
+      "maxItems": 9
+    }
+  },
+  "$defs": {
+    "lens": {
+      "type": "object",
+      "required": ["projection", "fx", "fy", "cx", "cy", "distortion"],
+      "properties": {
+        "projection": { "enum": ["equidistant", "equisolid", "orthographic", "stereographic"] },
+        "distortion_model": { "enum": ["opencv_fisheye", "opencv_fisheye_estimated_from_stmap", "kannala_brandt", "none"] },
+        "fx": { "type": "number" },
+        "fy": { "type": "number" },
+        "cx": { "type": "number" },
+        "cy": { "type": "number" },
+        "rms_reprojection_error_px": { "type": "number" },
+        "output_to_lens_rotation": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 9,
+          "maxItems": 9
+        },
+        "distortion": {
+          "type": "array",
+          "items": { "type": "number" }
+        }
+      }
+    }
+  }
+}
+
