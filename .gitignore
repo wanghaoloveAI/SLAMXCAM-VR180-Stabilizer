@@ -16,7 +16,9 @@ dist/
 # Generated outputs and local media samples
 outputs/
 private_calibrations/
-/calibration_runtime/
+/calibration_runtime/*
+!/calibration_runtime/slam_xcam_calibration_runtime.dll
+!/calibration_runtime/slam_xcam_calibration_runtime.manifest.json
 /private_calibration_runtime/
 /tmp/
 /videoandimu/
