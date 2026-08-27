@@ -1,0 +1,1480 @@
+<meta charset="utf-8">
+<div id="slam-coordinate-lab">
+  <style>
+    #slam-coordinate-lab {
+      --bg: #0d1117;
+      --panel: #151b23;
+      --panel-2: #0f141c;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --line: #30363d;
+      --x: #ff5c5c;
+      --y: #4ade80;
+      --z: #60a5fa;
+      --accent: #f59e0b;
+      font-family: "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      min-height: 100vh;
+      padding: 22px;
+      box-sizing: border-box;
+    }
+
+    #slam-coordinate-lab * {
+      box-sizing: border-box;
+    }
+
+    .lab-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 18px;
+    }
+
+    .lab-header h1 {
+      margin: 0 0 6px;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .lab-header p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+      max-width: 980px;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(170px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .control {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .control label {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .control input,
+    .control select,
+    .control button {
+      width: 100%;
+    }
+
+    .control input[type="file"] {
+      color: var(--muted);
+    }
+
+    .control button {
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel-2);
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .playback-card,
+    .scene-card,
+    .matrix {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .playback-card {
+      margin-bottom: 14px;
+    }
+
+    .playback-card header,
+    .scene-card header {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel-2);
+    }
+
+    .playback-card h2,
+    .scene-card h2 {
+      margin: 0 0 4px;
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .playback-card p,
+    .scene-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      background: radial-gradient(circle at 50% 45%, #1d2633 0, #0d1117 62%);
+    }
+
+    .playback-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(260px, 1fr));
+      gap: 0;
+    }
+
+    .playback-view {
+      min-width: 0;
+      border-right: 1px solid var(--line);
+    }
+
+    .playback-view:last-child {
+      border-right: 0;
+    }
+
+    .playback-view canvas {
+      height: 360px;
+    }
+
+    .playback-caption {
+      min-height: 86px;
+      padding: 10px 12px 12px;
+      border-top: 1px solid var(--line);
+      background: #101720;
+    }
+
+    .playback-caption h3 {
+      margin: 0 0 5px;
+      font-size: 15px;
+    }
+
+    .playback-caption p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 14px 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    .timeline input {
+      width: 100%;
+    }
+
+    .time-readout {
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      font-size: 13px;
+    }
+
+    .scene-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(240px, 1fr));
+      gap: 14px;
+    }
+
+    .scene-card canvas {
+      height: 260px;
+    }
+
+    .texture-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(220px, 1fr));
+      gap: 0;
+    }
+
+    .texture-view {
+      min-width: 0;
+      border-right: 1px solid var(--line);
+    }
+
+    .texture-view:last-child {
+      border-right: 0;
+    }
+
+    .texture-view canvas {
+      height: 300px;
+      background: #05070a;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      padding: 10px 14px 14px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .axis {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex: 0 0 auto;
+    }
+
+    .x { background: var(--x); }
+    .y { background: var(--y); }
+    .z { background: var(--z); }
+
+    .matrix-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .matrix {
+      padding: 14px;
+    }
+
+    .matrix h3 {
+      margin: 0 0 10px;
+      font-size: 16px;
+    }
+
+    pre {
+      margin: 0;
+      padding: 12px;
+      border-radius: 6px;
+      background: #080b10;
+      color: var(--text);
+      overflow-x: auto;
+      line-height: 1.5;
+      font-size: 13px;
+    }
+
+    .note {
+      margin-top: 14px;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 14px;
+    }
+
+    @media (max-width: 980px) {
+      .playback-grid,
+      .scene-grid,
+      .matrix-row,
+      .controls {
+        grid-template-columns: 1fr;
+      }
+
+      .timeline {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+
+  <div class="lab-header">
+    <div>
+      <h1>SLAM XCAM Coordinate System Lab</h1>
+      <p>横屏相机模型 + IMU 回放。导入 SLAM XCAM IMU CSV 后拖动进度条，观察手机屏幕面和背面摄像头方向是否符合你拍摄时的记忆。</p>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="control">
+      <label for="imuFile">IMU CSV</label>
+      <input id="imuFile" type="file" accept=".csv,text/csv">
+    </div>
+    <div class="control">
+      <label for="videoFile">半球贴图视频</label>
+      <input id="videoFile" type="file" accept="video/*">
+    </div>
+    <div class="control">
+      <label for="mapping">候选 IMU -> 手机/渲染映射</label>
+      <select id="mapping">
+        <option value="slam-xcam-landscape-v1" selected>SLAM XCAM 横屏实测 v1: x=+Yimu, y=+Ximu, z=+Zimu</option>
+        <option value="identity">Identity: x,y,z 不变</option>
+        <option value="android-landscape">Android 横屏候选: x=+Yimu, y=-Zimu, z=+Ximu</option>
+        <option value="camera-forward">Camera forward 候选: x=+Ximu, y=-Yimu, z=-Zimu</option>
+        <option value="swap-yz">Swap Y/Z 候选: x=+Ximu, y=+Zimu, z=+Yimu</option>
+      </select>
+    </div>
+    <div class="control">
+      <label for="viewYaw">视图 yaw <span id="viewYawValue">38°</span></label>
+      <input id="viewYaw" type="range" min="-180" max="180" value="38">
+    </div>
+    <div class="control">
+      <label for="viewPitch">视图 pitch <span id="viewPitchValue">24°</span></label>
+      <input id="viewPitch" type="range" min="-80" max="80" value="24">
+    </div>
+    <div class="control">
+      <label for="gyroScale">gyro scale <span id="gyroScaleValue">1.00x</span></label>
+      <input id="gyroScale" type="range" min="-200" max="200" value="100">
+    </div>
+    <div class="control">
+      <label for="zGyroGain">Z gyro gain <span id="zGyroGainValue">1.00x</span></label>
+      <input id="zGyroGain" type="range" min="-200" max="200" value="100">
+    </div>
+    <div class="control">
+      <label for="unitMode">gyro 单位</label>
+      <select id="unitMode">
+        <option value="rad_s">rad/s</option>
+        <option value="deg_s">deg/s</option>
+      </select>
+    </div>
+    <div class="control">
+      <label for="videoFps">视频帧率 <span id="videoFpsValue">30 fps</span></label>
+      <input id="videoFps" type="range" min="24" max="60" value="30">
+    </div>
+    <div class="control">
+      <label for="playbackSpeed">播放速度</label>
+      <select id="playbackSpeed">
+        <option value="0.25">0.25x</option>
+        <option value="0.5">0.5x</option>
+        <option value="1" selected>1x</option>
+        <option value="2">2x</option>
+        <option value="4">4x</option>
+      </select>
+    </div>
+    <div class="control">
+      <label>回放</label>
+      <button id="playPause" type="button">Play / Pause</button>
+    </div>
+  </div>
+
+  <section class="playback-card">
+    <header>
+      <h2>三模式姿态仿真</h2>
+      <p id="imuStatus">未导入 IMU。当前使用内置演示轨迹：先 yaw，再 pitch，再 roll。拖动进度条可同时对比原始姿态、普通防抖、地平线防抖。</p>
+    </header>
+    <div class="playback-grid">
+      <div class="playback-view">
+        <canvas id="rawCanvas" width="520" height="360"></canvas>
+        <div class="playback-caption">
+          <h3>原始状态</h3>
+          <p>直接显示 IMU 积分后的相机姿态，用来观察真实手持运动和坐标轴方向。</p>
+        </div>
+      </div>
+      <div class="playback-view">
+        <canvas id="normalCanvas" width="520" height="360"></canvas>
+        <div class="playback-caption">
+          <h3>普通防抖模式</h3>
+          <p>基于 IMU 姿态曲线做双向平滑，显示稳定输出希望跟随的目标相机姿态。</p>
+        </div>
+      </div>
+      <div class="playback-view">
+        <canvas id="horizonCanvas" width="520" height="360"></canvas>
+        <div class="playback-caption">
+          <h3>地平线防抖模式</h3>
+          <p>保留普通防抖的观看方向，同时重建相机 Up 方向，尽量消除横滚。</p>
+        </div>
+      </div>
+    </div>
+    <div class="timeline">
+      <input id="timeSlider" type="range" min="0" max="0" value="0">
+      <div class="time-readout" id="timeReadout">t=0.000s · frame 1/1</div>
+    </div>
+  </section>
+
+  <section class="playback-card">
+    <header>
+      <h2>半球视频贴图仿真</h2>
+      <p id="videoStatus">加载裁剪后的 480x480 半幅视频。这里用圆形半球贴图近似验证视频重投影方向，不替代最终像素级渲染。</p>
+    </header>
+    <div class="texture-grid">
+      <div class="texture-view">
+        <canvas id="rawTextureCanvas" width="480" height="300"></canvas>
+        <div class="playback-caption">
+          <h3>原始视频半球</h3>
+          <p id="rawTextureInfo">固定3D半球，直接显示原始视频采样。修正角度 0.00°。</p>
+        </div>
+      </div>
+      <div class="texture-view">
+        <canvas id="normalTextureCanvas" width="480" height="300"></canvas>
+        <div class="playback-caption">
+          <h3>普通防抖贴图</h3>
+          <p id="normalTextureInfo">固定3D半球，使用普通防抖 correction 重采样。</p>
+        </div>
+      </div>
+      <div class="texture-view">
+        <canvas id="horizonTextureCanvas" width="480" height="300"></canvas>
+        <div class="playback-caption">
+          <h3>地平线防抖贴图</h3>
+          <p id="horizonTextureInfo">固定3D半球，使用地平线 correction 重采样。</p>
+        </div>
+      </div>
+    </div>
+    <video id="textureVideo" muted playsinline preload="auto" style="display:none"></video>
+  </section>
+
+  <div class="scene-grid">
+    <section class="scene-card">
+      <header>
+        <h2>手机 / 相机机身坐标系</h2>
+        <p>横屏拍摄假设：+X 向右，+Y 向上，+Z 指向背面摄像头拍摄前方。</p>
+      </header>
+      <canvas id="phoneCanvas" width="520" height="260"></canvas>
+      <div class="legend">
+        <div class="axis"><span class="swatch x"></span>+X 右</div>
+        <div class="axis"><span class="swatch y"></span>+Y 上</div>
+        <div class="axis"><span class="swatch z"></span>+Z 背摄前方</div>
+      </div>
+    </section>
+
+    <section class="scene-card">
+      <header>
+        <h2>IMU 原始坐标系</h2>
+        <p>先按 CSV 里的 gyro/acc 轴画出，后续用实测旋转来确认正负号。</p>
+      </header>
+      <canvas id="imuCanvas" width="520" height="260"></canvas>
+      <div class="legend">
+        <div class="axis"><span class="swatch x"></span>gx / ax</div>
+        <div class="axis"><span class="swatch y"></span>gy / ay</div>
+        <div class="axis"><span class="swatch z"></span>gz / az</div>
+      </div>
+    </section>
+
+    <section class="scene-card">
+      <header>
+        <h2>防抖渲染坐标系</h2>
+        <p>渲染 ray space：+X 向右，+Y 向上，+Z 向画面前方。</p>
+      </header>
+      <canvas id="rendererCanvas" width="520" height="260"></canvas>
+      <div class="legend">
+        <div class="axis"><span class="swatch x"></span>ray X</div>
+        <div class="axis"><span class="swatch y"></span>ray Y</div>
+        <div class="axis"><span class="swatch z"></span>ray Z</div>
+      </div>
+    </section>
+  </div>
+
+  <div class="matrix-row">
+    <section class="matrix">
+      <h3>候选映射矩阵 R_imu_to_renderer</h3>
+      <pre id="matrixText"></pre>
+    </section>
+    <section class="matrix">
+      <h3>如何用记忆验证</h3>
+      <pre>1. 导入真实 IMU CSV。
+2. 拖动进度条到你记得的动作位置。
+3. 看背面摄像头箭头是否朝向当时拍摄方向。
+4. 看屏幕面是否和手持横屏记忆一致。
+5. 如果 yaw/pitch/roll 方向反了，切换候选映射或 gyro scale=-1。
+6. 如果只有 Z 轴角度明显过大，尝试 Z gyro gain=0.50x。</pre>
+    </section>
+  </div>
+
+  <div class="note">
+    当前回放用 gyro 积分做方向判断，适合先查坐标系正负号；长时间回放会有漂移。最终 pipeline 仍需要结合 offset、平滑、加速度重力方向和视频内容校准。
+  </div>
+
+  <script>
+    (() => {
+      const root = document.getElementById("slam-coordinate-lab");
+      const imuFile = root.querySelector("#imuFile");
+      const videoFile = root.querySelector("#videoFile");
+      const mapping = root.querySelector("#mapping");
+      const viewYaw = root.querySelector("#viewYaw");
+      const viewPitch = root.querySelector("#viewPitch");
+      const viewYawValue = root.querySelector("#viewYawValue");
+      const viewPitchValue = root.querySelector("#viewPitchValue");
+      const gyroScale = root.querySelector("#gyroScale");
+      const gyroScaleValue = root.querySelector("#gyroScaleValue");
+      const zGyroGain = root.querySelector("#zGyroGain");
+      const zGyroGainValue = root.querySelector("#zGyroGainValue");
+      const unitMode = root.querySelector("#unitMode");
+      const videoFps = root.querySelector("#videoFps");
+      const videoFpsValue = root.querySelector("#videoFpsValue");
+      const playbackSpeed = root.querySelector("#playbackSpeed");
+      const playPause = root.querySelector("#playPause");
+      const timeSlider = root.querySelector("#timeSlider");
+      const timeReadout = root.querySelector("#timeReadout");
+      const matrixText = root.querySelector("#matrixText");
+      const imuStatus = root.querySelector("#imuStatus");
+      const videoStatus = root.querySelector("#videoStatus");
+      const textureVideo = root.querySelector("#textureVideo");
+      const rawTextureInfo = root.querySelector("#rawTextureInfo");
+      const normalTextureInfo = root.querySelector("#normalTextureInfo");
+      const horizonTextureInfo = root.querySelector("#horizonTextureInfo");
+
+      const matrices = {
+        "slam-xcam-landscape-v1": [
+          [0, 1, 0],
+          [1, 0, 0],
+          [0, 0, 1]
+        ],
+        identity: [
+          [1, 0, 0],
+          [0, 1, 0],
+          [0, 0, 1]
+        ],
+        "android-landscape": [
+          [0, 1, 0],
+          [0, 0, -1],
+          [1, 0, 0]
+        ],
+        "camera-forward": [
+          [1, 0, 0],
+          [0, -1, 0],
+          [0, 0, -1]
+        ],
+        "swap-yz": [
+          [1, 0, 0],
+          [0, 0, 1],
+          [0, 1, 0]
+        ]
+      };
+
+      const axisColors = {
+        x: "#ff5c5c",
+        y: "#4ade80",
+        z: "#60a5fa",
+        screen: "#c084fc",
+        camera: "#f59e0b"
+      };
+
+      let samples = makeDemoSamples();
+      let imuFrames = [];
+      let frames = [];
+      let playing = false;
+      let lastTick = 0;
+      let videoObjectUrl = "";
+      let syncingVideo = false;
+      let sphereRenderers = null;
+
+      const canvases = [
+        {
+          canvas: root.querySelector("#phoneCanvas"),
+          label: "BODY",
+          axes: [
+            { name: "+X right", v: [1, 0, 0], color: axisColors.x },
+            { name: "+Y up", v: [0, 1, 0], color: axisColors.y },
+            { name: "+Z camera", v: [0, 0, 1], color: axisColors.z }
+          ],
+          box: true
+        },
+        {
+          canvas: root.querySelector("#imuCanvas"),
+          label: "IMU",
+          axes: [
+            { name: "+Ximu", v: [1, 0, 0], color: axisColors.x },
+            { name: "+Yimu", v: [0, 1, 0], color: axisColors.y },
+            { name: "+Zimu", v: [0, 0, 1], color: axisColors.z }
+          ],
+          chip: true
+        },
+        {
+          canvas: root.querySelector("#rendererCanvas"),
+          label: "RENDER",
+          axes: [],
+          sphere: true
+        }
+      ];
+
+      function makeDemoSamples() {
+        const out = [];
+        const hz = 100;
+        for (let i = 0; i <= 900; i += 1) {
+          const t = i / hz;
+          let gx = 0, gy = 0, gz = 0;
+          if (t > 1 && t < 3) gy = 0.45;
+          if (t > 3.5 && t < 5.5) gx = -0.35;
+          if (t > 6 && t < 8) gz = 0.45;
+          out.push({ t, gx, gy, gz });
+        }
+        return out;
+      }
+
+      function parseCsv(text) {
+        const lines = text.split(/\r?\n/).filter(line => line.trim());
+        if (lines.length < 2) return [];
+        const headers = splitCsvLine(lines[0]).map(h => h.trim().toLowerCase());
+        const idx = {
+          time: findHeader(headers, ["timestamp(us)", "timestamp_us", "time_us", "timestamp", "timestamp_s", "time", "t"]),
+          gx: findHeader(headers, ["gyro_x", "gx", "gyr_x", "gyro[0]", "gyro x"]),
+          gy: findHeader(headers, ["gyro_y", "gy", "gyr_y", "gyro[1]", "gyro y"]),
+          gz: findHeader(headers, ["gyro_z", "gz", "gyr_z", "gyro[2]", "gyro z"])
+        };
+        if (idx.time < 0 || idx.gx < 0 || idx.gy < 0 || idx.gz < 0) return [];
+        const rows = [];
+        for (let i = 1; i < lines.length; i += 1) {
+          const cols = splitCsvLine(lines[i]);
+          const rawTime = Number(cols[idx.time]);
+          const gx = Number(cols[idx.gx]);
+          const gy = Number(cols[idx.gy]);
+          const gz = Number(cols[idx.gz]);
+          if (!Number.isFinite(rawTime) || !Number.isFinite(gx) || !Number.isFinite(gy) || !Number.isFinite(gz)) continue;
+          rows.push({ rawTime, gx, gy, gz });
+        }
+        if (!rows.length) return [];
+        const first = rows[0].rawTime;
+        const looksMicro = Math.max(...rows.slice(0, Math.min(rows.length, 20)).map(r => Math.abs(r.rawTime))) > 1000;
+        return rows.map(r => ({
+          t: looksMicro ? (r.rawTime - first) / 1000000 : (r.rawTime - first),
+          gx: r.gx,
+          gy: r.gy,
+          gz: r.gz
+        })).filter(row => row.t >= 0);
+      }
+
+      function splitCsvLine(line) {
+        const out = [];
+        let cur = "";
+        let quoted = false;
+        for (let i = 0; i < line.length; i += 1) {
+          const ch = line[i];
+          if (ch === '"') quoted = !quoted;
+          else if (ch === "," && !quoted) {
+            out.push(cur);
+            cur = "";
+          } else {
+            cur += ch;
+          }
+        }
+        out.push(cur);
+        return out;
+      }
+
+      function findHeader(headers, aliases) {
+        return headers.findIndex(h => aliases.includes(h));
+      }
+
+      function mulMatVec(m, v) {
+        return [
+          m[0][0] * v[0] + m[0][1] * v[1] + m[0][2] * v[2],
+          m[1][0] * v[0] + m[1][1] * v[1] + m[1][2] * v[2],
+          m[2][0] * v[0] + m[2][1] * v[1] + m[2][2] * v[2]
+        ];
+      }
+
+      function quatMul(a, b) {
+        return [
+          a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3],
+          a[0] * b[1] + a[1] * b[0] + a[2] * b[3] - a[3] * b[2],
+          a[0] * b[2] - a[1] * b[3] + a[2] * b[0] + a[3] * b[1],
+          a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0]
+        ];
+      }
+
+      function quatNormalize(q) {
+        const n = Math.hypot(q[0], q[1], q[2], q[3]) || 1;
+        return [q[0] / n, q[1] / n, q[2] / n, q[3] / n];
+      }
+
+      function quatConjugate(q) {
+        return [q[0], -q[1], -q[2], -q[3]];
+      }
+
+      function quatDot(a, b) {
+        return a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+      }
+
+      function quatSlerp(a, b, t) {
+        t = Math.max(0, Math.min(1, t));
+        let aa = quatNormalize(a);
+        let bb = quatNormalize(b);
+        let dot = quatDot(aa, bb);
+        if (dot < 0) {
+          bb = [-bb[0], -bb[1], -bb[2], -bb[3]];
+          dot = -dot;
+        }
+        if (dot > 0.9995) {
+          return quatNormalize([
+            aa[0] + t * (bb[0] - aa[0]),
+            aa[1] + t * (bb[1] - aa[1]),
+            aa[2] + t * (bb[2] - aa[2]),
+            aa[3] + t * (bb[3] - aa[3])
+          ]);
+        }
+        const theta0 = Math.acos(Math.max(-1, Math.min(1, dot)));
+        const theta = theta0 * t;
+        const sinTheta = Math.sin(theta);
+        const sinTheta0 = Math.sin(theta0);
+        const s0 = Math.cos(theta) - dot * sinTheta / sinTheta0;
+        const s1 = sinTheta / sinTheta0;
+        return quatNormalize([
+          s0 * aa[0] + s1 * bb[0],
+          s0 * aa[1] + s1 * bb[1],
+          s0 * aa[2] + s1 * bb[2],
+          s0 * aa[3] + s1 * bb[3]
+        ]);
+      }
+
+      function angularDistanceDeg(a, b) {
+        const rel = quatMul(b, quatConjugate(a));
+        const angle = 2 * Math.acos(Math.max(0, Math.min(1, Math.abs(rel[0]))));
+        return angle * 180 / Math.PI;
+      }
+
+      function quatFromOmega(omega, dt) {
+        const mag = Math.hypot(omega[0], omega[1], omega[2]);
+        if (mag < 1e-9 || dt <= 0) return [1, 0, 0, 0];
+        const angle = mag * dt;
+        const s = Math.sin(angle / 2) / mag;
+        return [Math.cos(angle / 2), omega[0] * s, omega[1] * s, omega[2] * s];
+      }
+
+      function interpolateQuatFrame(sourceFrames, t, key) {
+        if (!sourceFrames.length) return [1, 0, 0, 0];
+        if (t <= sourceFrames[0].t) return sourceFrames[0][key];
+        if (t >= sourceFrames[sourceFrames.length - 1].t) return sourceFrames[sourceFrames.length - 1][key];
+        let lo = 0;
+        let hi = sourceFrames.length - 1;
+        while (lo + 1 < hi) {
+          const mid = Math.floor((lo + hi) / 2);
+          if (sourceFrames[mid].t <= t) lo = mid; else hi = mid;
+        }
+        const span = Math.max(1e-9, sourceFrames[hi].t - sourceFrames[lo].t);
+        return quatSlerp(sourceFrames[lo][key], sourceFrames[hi][key], (t - sourceFrames[lo].t) / span);
+      }
+
+      function quatRotate(q, v) {
+        const p = [0, v[0], v[1], v[2]];
+        const qi = [q[0], -q[1], -q[2], -q[3]];
+        const r = quatMul(quatMul(q, p), qi);
+        return [r[1], r[2], r[3]];
+      }
+
+      function quatToMatrix3(q) {
+        const n = quatNormalize(q);
+        const w = n[0], x = n[1], y = n[2], z = n[3];
+        return [
+          [1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+          [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+          [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]
+        ];
+      }
+
+      function flattenMat3(m) {
+        return [
+          m[0][0], m[1][0], m[2][0],
+          m[0][1], m[1][1], m[2][1],
+          m[0][2], m[1][2], m[2][2]
+        ];
+      }
+
+      function stabilizationCorrection(raw, target) {
+        return quatMul(quatConjugate(raw), target);
+      }
+
+      function rollFromQuat(q) {
+        const up = quatRotate(q, [0, 1, 0]);
+        const right = quatRotate(q, [1, 0, 0]);
+        return Math.atan2(right[1], up[1]);
+      }
+
+      function dotVec(a, b) {
+        return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+      }
+
+      function crossVec(a, b) {
+        return [
+          a[1] * b[2] - a[2] * b[1],
+          a[2] * b[0] - a[0] * b[2],
+          a[0] * b[1] - a[1] * b[0]
+        ];
+      }
+
+      function normalizeVec(v) {
+        const n = Math.hypot(v[0], v[1], v[2]);
+        if (n < 1e-9) return null;
+        return [v[0] / n, v[1] / n, v[2] / n];
+      }
+
+      function quatFromMatrix3(m) {
+        const trace = m[0][0] + m[1][1] + m[2][2];
+        if (trace > 0) {
+          const s = Math.sqrt(trace + 1) * 2;
+          return quatNormalize([
+            0.25 * s,
+            (m[2][1] - m[1][2]) / s,
+            (m[0][2] - m[2][0]) / s,
+            (m[1][0] - m[0][1]) / s
+          ]);
+        }
+        if (m[0][0] > m[1][1] && m[0][0] > m[2][2]) {
+          const s = Math.sqrt(1 + m[0][0] - m[1][1] - m[2][2]) * 2;
+          return quatNormalize([
+            (m[2][1] - m[1][2]) / s,
+            0.25 * s,
+            (m[0][1] + m[1][0]) / s,
+            (m[0][2] + m[2][0]) / s
+          ]);
+        }
+        if (m[1][1] > m[2][2]) {
+          const s = Math.sqrt(1 + m[1][1] - m[0][0] - m[2][2]) * 2;
+          return quatNormalize([
+            (m[0][2] - m[2][0]) / s,
+            (m[0][1] + m[1][0]) / s,
+            0.25 * s,
+            (m[1][2] + m[2][1]) / s
+          ]);
+        }
+        const s = Math.sqrt(1 + m[2][2] - m[0][0] - m[1][1]) * 2;
+        return quatNormalize([
+          (m[1][0] - m[0][1]) / s,
+          (m[0][2] + m[2][0]) / s,
+          (m[1][2] + m[2][1]) / s,
+          0.25 * s
+        ]);
+      }
+
+      function bidirectionalSmooth(rawFrames) {
+        const n = rawFrames.length;
+        if (n <= 1) return rawFrames.map(f => f.q);
+        const smoothMs = 1000;
+        const fastMs = 50;
+        const maxVelDegS = 200;
+        const velocity = Array(n).fill(0);
+        for (let i = 1; i < n; i += 1) {
+          const dt = Math.max(1e-6, rawFrames[i].t - rawFrames[i - 1].t);
+          velocity[i] = angularDistanceDeg(rawFrames[i - 1].q, rawFrames[i].q) / dt;
+        }
+        for (let i = 1; i < n; i += 1) {
+          const dt = Math.max(1e-6, rawFrames[i].t - rawFrames[i - 1].t);
+          const alpha = Math.min(1, dt / 0.2);
+          velocity[i] = velocity[i - 1] * (1 - alpha) + velocity[i] * alpha;
+        }
+        for (let i = n - 2; i >= 0; i -= 1) {
+          const dt = Math.max(1e-6, rawFrames[i + 1].t - rawFrames[i].t);
+          const alpha = Math.min(1, dt / 0.2);
+          velocity[i] = velocity[i + 1] * (1 - alpha) + velocity[i] * alpha;
+        }
+        const alphaFor = (i, dt) => {
+          const velNorm = Math.max(0, Math.min(1, velocity[i] / maxVelDegS));
+          const tauMs = smoothMs * (1 - velNorm) + fastMs * velNorm;
+          const tauS = Math.max(1e-6, tauMs / 1000);
+          return dt / (tauS + dt);
+        };
+        const fwd = [rawFrames[0].q];
+        for (let i = 1; i < n; i += 1) {
+          const dt = Math.max(1e-6, rawFrames[i].t - rawFrames[i - 1].t);
+          fwd.push(quatSlerp(fwd[i - 1], rawFrames[i].q, alphaFor(i, dt)));
+        }
+        const bwd = Array(n);
+        bwd[n - 1] = rawFrames[n - 1].q;
+        for (let i = n - 2; i >= 0; i -= 1) {
+          const dt = Math.max(1e-6, rawFrames[i + 1].t - rawFrames[i].t);
+          bwd[i] = quatSlerp(bwd[i + 1], rawFrames[i].q, alphaFor(i, dt));
+        }
+        return fwd.map((q, i) => quatSlerp(q, bwd[i], 0.5));
+      }
+
+      function horizonLockedTarget(q) {
+        const worldUp = [0, 1, 0];
+        const forward = normalizeVec(quatRotate(q, [0, 0, 1]));
+        if (!forward) return q;
+        const upDot = dotVec(worldUp, forward);
+        const projectedUp = [
+          worldUp[0] - upDot * forward[0],
+          worldUp[1] - upDot * forward[1],
+          worldUp[2] - upDot * forward[2]
+        ];
+        let up = normalizeVec(projectedUp);
+        if (!up) return q;
+        const right = normalizeVec(crossVec(up, forward));
+        if (!right) return q;
+        up = normalizeVec(crossVec(forward, right));
+        if (!up) return q;
+        return quatFromMatrix3([
+          [right[0], up[0], forward[0]],
+          [right[1], up[1], forward[1]],
+          [right[2], up[2], forward[2]]
+        ]);
+      }
+
+      function integrateSamples() {
+        const map = matrices[mapping.value];
+        const scale = Number(gyroScale.value) / 100;
+        const zGain = Number(zGyroGain.value) / 100;
+        const degToRad = unitMode.value === "deg_s" ? Math.PI / 180 : 1;
+        const rawFrames = [];
+        let q = [1, 0, 0, 0];
+        if (!samples.length) samples = makeDemoSamples();
+        rawFrames.push({ t: samples[0].t || 0, q });
+        for (let i = 1; i < samples.length; i += 1) {
+          const prev = samples[i - 1];
+          const cur = samples[i];
+          const dt = Math.max(0, Math.min(0.05, cur.t - prev.t));
+          const raw = [cur.gx * degToRad * scale, cur.gy * degToRad * scale, cur.gz * degToRad * scale * zGain];
+          const omega = mulMatVec(map, raw);
+          q = quatNormalize(quatMul(q, quatFromOmega(omega, dt)));
+          rawFrames.push({ t: cur.t, q });
+        }
+        const smoothTargets = bidirectionalSmooth(rawFrames);
+        imuFrames = rawFrames.map((frame, i) => ({
+          t: frame.t,
+          raw: frame.q,
+          smooth: smoothTargets[i],
+          normal: smoothTargets[i],
+          horizon: horizonLockedTarget(smoothTargets[i])
+        }));
+        buildVideoFrameTimeline();
+        timeSlider.max = String(Math.max(0, frames.length - 1));
+        timeSlider.value = String(Math.min(Number(timeSlider.value), frames.length - 1));
+        renderAll();
+      }
+
+      function buildVideoFrameTimeline() {
+        const fps = Number(videoFps.value) || 30;
+        const imuDuration = imuFrames.length ? imuFrames[imuFrames.length - 1].t - imuFrames[0].t : 0;
+        const videoDuration = Number.isFinite(textureVideo.duration) && textureVideo.duration > 0 ? textureVideo.duration : imuDuration;
+        const duration = Math.max(0, Math.min(imuDuration || videoDuration, videoDuration || imuDuration));
+        const count = Math.max(1, Math.floor(duration * fps) + 1);
+        frames = [];
+        for (let i = 0; i < count; i += 1) {
+          const t = i / fps;
+          const raw = interpolateQuatFrame(imuFrames, t, "raw");
+          const normal = interpolateQuatFrame(imuFrames, t, "normal");
+          const horizon = horizonLockedTarget(normal);
+          frames.push({ frameIndex: i, t, raw, normal, horizon });
+        }
+      }
+
+      function frameIndexForTime(t) {
+        if (!frames.length) return 0;
+        const fps = Number(videoFps.value) || 30;
+        return Math.max(0, Math.min(frames.length - 1, Math.round(t * fps)));
+      }
+
+      function rotateView(v, yawDeg, pitchDeg) {
+        const ya = yawDeg * Math.PI / 180;
+        const pi = pitchDeg * Math.PI / 180;
+        const cy = Math.cos(ya), sy = Math.sin(ya);
+        const cp = Math.cos(pi), sp = Math.sin(pi);
+        const x1 = cy * v[0] + sy * v[2];
+        const z1 = -sy * v[0] + cy * v[2];
+        const y1 = v[1];
+        const y2 = cp * y1 - sp * z1;
+        const z2 = sp * y1 + cp * z1;
+        return [x1, y2, z2];
+      }
+
+      function project(v, w, h, zoom = 1) {
+        const scale = Math.min(w, h) * 0.33 * zoom;
+        const depth = 2.2 + v[2] * 0.24;
+        return {
+          x: w / 2 + (v[0] * scale) / depth,
+          y: h / 2 - (v[1] * scale) / depth
+        };
+      }
+
+      function projectWorld(v, w, h, zoom = 1) {
+        return project(rotateView(v, Number(viewYaw.value), Number(viewPitch.value)), w, h, zoom);
+      }
+
+      function drawArrow(ctx, origin, end, color, label) {
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(origin.x, origin.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.stroke();
+        const angle = Math.atan2(end.y - origin.y, end.x - origin.x);
+        ctx.beginPath();
+        ctx.moveTo(end.x, end.y);
+        ctx.lineTo(end.x - 12 * Math.cos(angle - 0.45), end.y - 12 * Math.sin(angle - 0.45));
+        ctx.lineTo(end.x - 12 * Math.cos(angle + 0.45), end.y - 12 * Math.sin(angle + 0.45));
+        ctx.closePath();
+        ctx.fill();
+        ctx.font = "600 13px Segoe UI, Microsoft YaHei, Arial";
+        ctx.fillText(label, end.x + 8, end.y - 8);
+      }
+
+      function drawGrid(ctx, w, h, zoom = 1) {
+        ctx.strokeStyle = "rgba(139, 148, 158, 0.24)";
+        ctx.lineWidth = 1;
+        for (let i = -2; i <= 2; i += 1) {
+          const a = projectWorld([-2, 0, i], w, h, zoom);
+          const b = projectWorld([2, 0, i], w, h, zoom);
+          const c = projectWorld([i, 0, -2], w, h, zoom);
+          const d = projectWorld([i, 0, 2], w, h, zoom);
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.moveTo(c.x, c.y);
+          ctx.lineTo(d.x, d.y);
+          ctx.stroke();
+        }
+      }
+
+      function drawStaticBox(ctx, w, h) {
+        const q = [1, 0, 0, 0];
+        drawPhoneGeometry(ctx, w, h, q, 0.82, false);
+      }
+
+      function drawChip(ctx, w, h) {
+        const pts = [[-0.9, -0.5, 0], [0.9, -0.5, 0], [0.9, 0.5, 0], [-0.9, 0.5, 0]]
+          .map(p => projectWorld(p, w, h));
+        ctx.fillStyle = "rgba(245, 158, 11, 0.14)";
+        ctx.strokeStyle = "rgba(245, 158, 11, 0.8)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i += 1) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      function drawSphere(ctx, w, h) {
+        ctx.strokeStyle = "rgba(96, 165, 250, 0.32)";
+        ctx.lineWidth = 1.2;
+        for (let ring = 0; ring < 3; ring += 1) {
+          const radius = 0.65 + ring * 0.28;
+          ctx.beginPath();
+          for (let i = 0; i <= 96; i += 1) {
+            const t = i / 96 * Math.PI * 2;
+            const p = projectWorld([Math.cos(t) * radius, Math.sin(t) * radius, 0], w, h);
+            if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+          }
+          ctx.stroke();
+        }
+      }
+
+      function drawPhoneGeometry(ctx, w, h, q, zoom, labels) {
+        const corners = [
+          [-1.6, -0.72, -0.08], [1.6, -0.72, -0.08], [1.6, 0.72, -0.08], [-1.6, 0.72, -0.08],
+          [-1.6, -0.72, 0.08], [1.6, -0.72, 0.08], [1.6, 0.72, 0.08], [-1.6, 0.72, 0.08]
+        ].map(p => quatRotate(q, p));
+        const pts = corners.map(p => projectWorld(p, w, h, zoom));
+        const faces = [
+          { ids: [0, 1, 2, 3], fill: "rgba(192,132,252,0.18)", stroke: "rgba(192,132,252,0.75)" },
+          { ids: [4, 5, 6, 7], fill: "rgba(245,158,11,0.18)", stroke: "rgba(245,158,11,0.75)" }
+        ];
+        faces.forEach(face => {
+          ctx.fillStyle = face.fill;
+          ctx.strokeStyle = face.stroke;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(pts[face.ids[0]].x, pts[face.ids[0]].y);
+          face.ids.slice(1).forEach(id => ctx.lineTo(pts[id].x, pts[id].y));
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        });
+        const edges = [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+        ctx.strokeStyle = "rgba(230,237,243,0.42)";
+        ctx.lineWidth = 1.2;
+        edges.forEach(([a, b]) => {
+          ctx.beginPath();
+          ctx.moveTo(pts[a].x, pts[a].y);
+          ctx.lineTo(pts[b].x, pts[b].y);
+          ctx.stroke();
+        });
+
+        const origin = projectWorld(quatRotate(q, [0, 0, 0]), w, h, zoom);
+        [
+          { label: "+X 右", v: [1.1, 0, 0], color: axisColors.x },
+          { label: "+Y 上", v: [0, 1.1, 0], color: axisColors.y },
+          { label: "+Z 背摄", v: [0, 0, 1.2], color: axisColors.z }
+        ].forEach(axis => {
+          drawArrow(ctx, origin, projectWorld(quatRotate(q, axis.v), w, h, zoom), axis.color, axis.label);
+        });
+
+        const cameraCenter = projectWorld(quatRotate(q, [0.95, 0.38, 0.11]), w, h, zoom);
+        ctx.fillStyle = axisColors.camera;
+        ctx.beginPath();
+        ctx.arc(cameraCenter.x, cameraCenter.y, 12, 0, Math.PI * 2);
+        ctx.fill();
+        const cameraEnd = projectWorld(quatRotate(q, [0.95, 0.38, 0.86]), w, h, zoom);
+        drawArrow(ctx, cameraCenter, cameraEnd, axisColors.camera, "背面摄像头方向");
+
+        const screenCenter = projectWorld(quatRotate(q, [0, 0, -0.42]), w, h, zoom);
+        drawArrow(ctx, origin, screenCenter, axisColors.screen, "屏幕面");
+
+        if (labels) {
+          ctx.fillStyle = "rgba(230,237,243,0.85)";
+          ctx.font = "700 14px Segoe UI, Microsoft YaHei, Arial";
+          ctx.fillText("横屏放置: 长边水平", 18, 28);
+        }
+      }
+
+      function drawPlaybackView(canvasId, q, title, subtitle) {
+        const canvas = root.querySelector(canvasId);
+        const ctx = canvas.getContext("2d");
+        const w = canvas.width;
+        const h = canvas.height;
+        ctx.clearRect(0, 0, w, h);
+        drawGrid(ctx, w, h, 1.12);
+        drawPhoneGeometry(ctx, w, h, q, 1.0, true);
+        ctx.fillStyle = "rgba(230,237,243,0.9)";
+        ctx.font = "700 15px Segoe UI, Microsoft YaHei, Arial";
+        ctx.fillText(title, 18, h - 42);
+        ctx.fillStyle = "rgba(230,237,243,0.78)";
+        ctx.font = "600 12px Segoe UI, Microsoft YaHei, Arial";
+        ctx.fillText(subtitle, 18, h - 22);
+      }
+
+      function drawPlayback() {
+        const frame = frames[Number(timeSlider.value)] || frames[0] || {
+          t: 0,
+          raw: [1, 0, 0, 0],
+          normal: [1, 0, 0, 0],
+          horizon: [1, 0, 0, 0]
+        };
+        const normalDelta = angularDistanceDeg(frame.raw, frame.normal);
+        const horizonDelta = angularDistanceDeg(frame.raw, frame.horizon);
+        drawPlaybackView("#rawCanvas", frame.raw, "原始状态", "IMU raw pose");
+        drawPlaybackView("#normalCanvas", frame.normal, "普通防抖模式", `smooth delta ${normalDelta.toFixed(2)}°`);
+        drawPlaybackView("#horizonCanvas", frame.horizon, "地平线防抖模式", `horizon delta ${horizonDelta.toFixed(2)}°`);
+        timeReadout.textContent = `t=${frame.t.toFixed(3)}s · sample ${Number(timeSlider.value) + 1}/${frames.length} · 普通差值 ${normalDelta.toFixed(2)}° · 地平线差值 ${horizonDelta.toFixed(2)}°`;
+        if (!playing) syncVideoToFrame(frame);
+        drawTextureComparison(frame);
+      }
+
+      function syncVideoToFrame(frame) {
+        if (!textureVideo.src || !Number.isFinite(textureVideo.duration) || textureVideo.duration <= 0) return;
+        const target = Math.max(0, Math.min(textureVideo.duration - 0.001, frame.t));
+        if (Math.abs(textureVideo.currentTime - target) < 0.04) return;
+        syncingVideo = true;
+        textureVideo.currentTime = target;
+      }
+
+      function drawTextureComparison(frame) {
+        if (!sphereRenderers) sphereRenderers = initSphereRenderers();
+        const ready = textureVideo.readyState >= 2;
+        const normalCorrection = stabilizationCorrection(frame.raw, frame.normal);
+        const horizonCorrection = stabilizationCorrection(frame.raw, frame.horizon);
+        const normalAngle = angularDistanceDeg([1, 0, 0, 0], normalCorrection);
+        const horizonAngle = angularDistanceDeg([1, 0, 0, 0], horizonCorrection);
+
+        // Keep the 3D output hemisphere fixed so only the renderer correction
+        // changes the sampled video direction.
+        sphereRenderers.raw.draw(textureVideo, [1, 0, 0, 0], ready);
+        sphereRenderers.normal.draw(textureVideo, normalCorrection, ready);
+        sphereRenderers.horizon.draw(textureVideo, horizonCorrection, ready);
+        rawTextureInfo.textContent = "固定3D半球，直接显示原始视频采样。修正角度 0.00°。";
+        normalTextureInfo.textContent = `固定3D半球，普通防抖修正 ${normalAngle.toFixed(2)}°。`;
+        horizonTextureInfo.textContent = `固定3D半球，地平线防抖修正 ${horizonAngle.toFixed(2)}°。`;
+      }
+
+      function initSphereRenderers() {
+        return {
+          raw: createSphereRenderer(root.querySelector("#rawTextureCanvas"), "raw"),
+          normal: createSphereRenderer(root.querySelector("#normalTextureCanvas"), "normal"),
+          horizon: createSphereRenderer(root.querySelector("#horizonTextureCanvas"), "horizon")
+        };
+      }
+
+      function createSphereRenderer(canvas, label) {
+        const gl = canvas.getContext("webgl", { antialias: true, preserveDrawingBuffer: true });
+        if (!gl) {
+          return { draw: () => {} };
+        }
+        const vertexSource = `
+          attribute vec3 aPos;
+          uniform mat3 uView;
+          varying vec3 vDir;
+          varying float vLight;
+          void main() {
+            vec3 viewPos = uView * aPos;
+            gl_Position = vec4(viewPos.xy * 0.88, viewPos.z * 0.08, 1.0);
+            vDir = aPos;
+            vLight = clamp(0.42 + 0.58 * viewPos.z, 0.18, 1.0);
+          }
+        `;
+        const fragmentSource = `
+          precision mediump float;
+          uniform sampler2D uTexture;
+          uniform mat3 uCorrection;
+          uniform int uReady;
+          varying vec3 vDir;
+          varying float vLight;
+          void main() {
+            vec3 srcDir = normalize(uCorrection * normalize(vDir));
+            if (srcDir.z < 0.0) discard;
+            float theta = acos(clamp(srcDir.z, -1.0, 1.0));
+            float maxTheta = 1.57079632679;
+            if (theta > maxTheta) discard;
+            float phi = atan(srcDir.y, srcDir.x);
+            float r = theta / maxTheta * 0.5;
+            vec2 uv = vec2(0.5 + r * cos(phi), 0.5 - r * sin(phi));
+            vec3 color = uReady == 1 ? texture2D(uTexture, uv).rgb : vec3(0.035, 0.050, 0.070);
+            gl_FragColor = vec4(color * vLight, 1.0);
+          }
+        `;
+        const program = createProgram(gl, vertexSource, fragmentSource);
+        const positions = createHemisphereMesh(48, 24);
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+        const aPos = gl.getAttribLocation(program, "aPos");
+        const uView = gl.getUniformLocation(program, "uView");
+        const uCorrection = gl.getUniformLocation(program, "uCorrection");
+        const uReady = gl.getUniformLocation(program, "uReady");
+        const uTexture = gl.getUniformLocation(program, "uTexture");
+        const texture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([8, 12, 18, 255]));
+        gl.enable(gl.DEPTH_TEST);
+        return {
+          draw(video, correctionQ, ready) {
+            gl.viewport(0, 0, canvas.width, canvas.height);
+            gl.clearColor(0.02, 0.027, 0.04, 1);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            gl.useProgram(program);
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+            gl.enableVertexAttribArray(aPos);
+            gl.vertexAttribPointer(aPos, 3, gl.FLOAT, false, 0, 0);
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            if (ready) {
+              try {
+                gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+              } catch (err) {
+                ready = false;
+              }
+            }
+            gl.uniform1i(uTexture, 0);
+            gl.uniform1i(uReady, ready ? 1 : 0);
+            gl.uniformMatrix3fv(uView, false, new Float32Array(flattenMat3(viewMatrix3())));
+            gl.uniformMatrix3fv(uCorrection, false, new Float32Array(flattenMat3(quatToMatrix3(correctionQ))));
+            gl.drawArrays(gl.TRIANGLES, 0, positions.length / 3);
+          }
+        };
+      }
+
+      function createProgram(gl, vertexSource, fragmentSource) {
+        const vertex = compileShader(gl, gl.VERTEX_SHADER, vertexSource);
+        const fragment = compileShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
+        const program = gl.createProgram();
+        gl.attachShader(program, vertex);
+        gl.attachShader(program, fragment);
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+          throw new Error(gl.getProgramInfoLog(program) || "WebGL program link failed");
+        }
+        return program;
+      }
+
+      function compileShader(gl, type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          throw new Error(gl.getShaderInfoLog(shader) || "WebGL shader compile failed");
+        }
+        return shader;
+      }
+
+      function createHemisphereMesh(cols, rows) {
+        const vertices = [];
+        const point = (col, row) => {
+          const phi = (col / cols) * Math.PI * 2;
+          const theta = (row / rows) * Math.PI / 2;
+          return [Math.sin(theta) * Math.cos(phi), Math.sin(theta) * Math.sin(phi), Math.cos(theta)];
+        };
+        for (let row = 0; row < rows; row += 1) {
+          for (let col = 0; col < cols; col += 1) {
+            const a = point(col, row);
+            const b = point(col + 1, row);
+            const c = point(col, row + 1);
+            const d = point(col + 1, row + 1);
+            vertices.push(...a, ...c, ...b, ...b, ...c, ...d);
+          }
+        }
+        return vertices;
+      }
+
+      function viewMatrix3() {
+        const yaw = Number(viewYaw.value) * Math.PI / 180;
+        const pitch = Number(viewPitch.value) * Math.PI / 180;
+        const cy = Math.cos(yaw), sy = Math.sin(yaw);
+        const cp = Math.cos(pitch), sp = Math.sin(pitch);
+        const yawM = [
+          [cy, 0, sy],
+          [0, 1, 0],
+          [-sy, 0, cy]
+        ];
+        const pitchM = [
+          [1, 0, 0],
+          [0, cp, -sp],
+          [0, sp, cp]
+        ];
+        return mat3Mul(pitchM, yawM);
+      }
+
+      function mat3Mul(a, b) {
+        return [
+          [
+            a[0][0] * b[0][0] + a[0][1] * b[1][0] + a[0][2] * b[2][0],
+            a[0][0] * b[0][1] + a[0][1] * b[1][1] + a[0][2] * b[2][1],
+            a[0][0] * b[0][2] + a[0][1] * b[1][2] + a[0][2] * b[2][2]
+          ],
+          [
+            a[1][0] * b[0][0] + a[1][1] * b[1][0] + a[1][2] * b[2][0],
+            a[1][0] * b[0][1] + a[1][1] * b[1][1] + a[1][2] * b[2][1],
+            a[1][0] * b[0][2] + a[1][1] * b[1][2] + a[1][2] * b[2][2]
+          ],
+          [
+            a[2][0] * b[0][0] + a[2][1] * b[1][0] + a[2][2] * b[2][0],
+            a[2][0] * b[0][1] + a[2][1] * b[1][1] + a[2][2] * b[2][1],
+            a[2][0] * b[0][2] + a[2][1] * b[1][2] + a[2][2] * b[2][2]
+          ]
+        ];
+      }
+
+      function drawReferenceCanvases() {
+        const map = matrices[mapping.value];
+        canvases[2].axes = [
+          { name: "+Ximu mapped", v: mulMatVec(map, [1, 0, 0]), color: axisColors.x },
+          { name: "+Yimu mapped", v: mulMatVec(map, [0, 1, 0]), color: axisColors.y },
+          { name: "+Zimu mapped", v: mulMatVec(map, [0, 0, 1]), color: axisColors.z }
+        ];
+        canvases.forEach(item => {
+          const canvas = item.canvas;
+          const ctx = canvas.getContext("2d");
+          const w = canvas.width;
+          const h = canvas.height;
+          ctx.clearRect(0, 0, w, h);
+          drawGrid(ctx, w, h);
+          if (item.box) drawStaticBox(ctx, w, h);
+          if (item.chip) drawChip(ctx, w, h);
+          if (item.sphere) drawSphere(ctx, w, h);
+          const origin = projectWorld([0, 0, 0], w, h);
+          item.axes.forEach(axis => {
+            drawArrow(ctx, origin, projectWorld(axis.v, w, h), axis.color, axis.name);
+          });
+          ctx.fillStyle = "rgba(230,237,243,0.8)";
+          ctx.font = "700 13px Segoe UI, Microsoft YaHei, Arial";
+          ctx.fillText(item.label, 16, 24);
+        });
+        matrixText.textContent = `[${map[0].join(", ")}]\n[${map[1].join(", ")}]\n[${map[2].join(", ")}]\n\n程序防抖采样方向：correction = raw^-1 * smoothed`;
+      }
+
+      function renderAll() {
+        viewYawValue.textContent = `${viewYaw.value}°`;
+        viewPitchValue.textContent = `${viewPitch.value}°`;
+        gyroScaleValue.textContent = `${(Number(gyroScale.value) / 100).toFixed(2)}x`;
+        zGyroGainValue.textContent = `${(Number(zGyroGain.value) / 100).toFixed(2)}x`;
+        videoFpsValue.textContent = `${videoFps.value} fps`;
+        drawPlayback();
+        drawReferenceCanvases();
+      }
+
+      imuFile.addEventListener("change", async () => {
+        const file = imuFile.files && imuFile.files[0];
+        if (!file) return;
+        const text = await file.text();
+        const parsed = parseCsv(text);
+        if (!parsed.length) {
+          imuStatus.textContent = "IMU CSV 读取失败：需要 timestamp + gyro_x/gyro_y/gyro_z 或 gx/gy/gz 列。";
+          return;
+        }
+        samples = parsed;
+        timeSlider.value = "0";
+        imuStatus.textContent = `已导入 ${file.name} · ${samples.length} samples · ${(samples.at(-1).t - samples[0].t).toFixed(3)}s`;
+        integrateSamples();
+      });
+
+      videoFile.addEventListener("change", () => {
+        const file = videoFile.files && videoFile.files[0];
+        if (!file) return;
+        if (videoObjectUrl) URL.revokeObjectURL(videoObjectUrl);
+        videoObjectUrl = URL.createObjectURL(file);
+        textureVideo.src = videoObjectUrl;
+        textureVideo.load();
+        videoStatus.textContent = `已加载 ${file.name}。拖动 IMU 进度条时，视频帧会同步到相同时间。`;
+      });
+
+      textureVideo.addEventListener("loadedmetadata", () => {
+        videoStatus.textContent = `视频已就绪：${textureVideo.videoWidth}x${textureVideo.videoHeight} · ${textureVideo.duration.toFixed(3)}s`;
+        buildVideoFrameTimeline();
+        timeSlider.max = String(Math.max(0, frames.length - 1));
+        timeSlider.value = String(Math.min(Number(timeSlider.value), frames.length - 1));
+        renderAll();
+      });
+
+      textureVideo.addEventListener("seeked", () => {
+        syncingVideo = false;
+        renderAll();
+      });
+
+      textureVideo.addEventListener("timeupdate", () => {
+        if (!syncingVideo) drawTextureComparison(frames[Number(timeSlider.value)] || frames[0] || { raw: [1, 0, 0, 0], normal: [1, 0, 0, 0], horizon: [1, 0, 0, 0] });
+      });
+
+      [mapping, unitMode].forEach(el => el.addEventListener("change", integrateSamples));
+      gyroScale.addEventListener("input", integrateSamples);
+      zGyroGain.addEventListener("input", integrateSamples);
+      videoFps.addEventListener("input", () => {
+        buildVideoFrameTimeline();
+        timeSlider.max = String(Math.max(0, frames.length - 1));
+        timeSlider.value = String(Math.min(Number(timeSlider.value), frames.length - 1));
+        renderAll();
+      });
+      [viewYaw, viewPitch, timeSlider].forEach(el => el.addEventListener("input", renderAll));
+
+      playPause.addEventListener("click", () => {
+        playing = !playing;
+        lastTick = performance.now();
+        if (textureVideo.src) {
+          textureVideo.playbackRate = Number(playbackSpeed.value) || 1;
+          if (playing) {
+            textureVideo.play().catch(() => {});
+          } else {
+            textureVideo.pause();
+          }
+        }
+        if (playing) requestAnimationFrame(tick);
+      });
+
+      playbackSpeed.addEventListener("change", () => {
+        if (textureVideo.src) textureVideo.playbackRate = Number(playbackSpeed.value) || 1;
+      });
+
+      function tick(now) {
+        if (!playing) return;
+        const dt = (now - lastTick) / 1000 * Number(playbackSpeed.value);
+        lastTick = now;
+        let nextIndex;
+        if (textureVideo.src && !textureVideo.paused && Number.isFinite(textureVideo.currentTime)) {
+          nextIndex = frameIndexForTime(textureVideo.currentTime);
+        } else {
+          const currentIndex = Number(timeSlider.value);
+          const current = frames[currentIndex] || frames[0];
+          const targetTime = (current ? current.t : 0) + dt;
+          nextIndex = currentIndex;
+          while (nextIndex + 1 < frames.length && frames[nextIndex + 1].t <= targetTime) nextIndex += 1;
+        }
+        if (nextIndex >= frames.length - 1) {
+          playing = false;
+          if (textureVideo.src) textureVideo.pause();
+          nextIndex = frames.length - 1;
+        }
+        timeSlider.value = String(nextIndex);
+        renderAll();
+        requestAnimationFrame(tick);
+      }
+
+      integrateSamples();
+    })();
+  </script>
+</div>

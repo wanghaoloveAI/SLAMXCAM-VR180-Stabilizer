@@ -41,9 +41,9 @@ The stabilizer has two image-processing algorithms:
 - Reference Renderer: calibrated ray-based fisheye reprojection.
 - STMap Renderer: lookup-table based remapping using precomputed STMap files.
 
-The current Reference Renderer implementation runs on CPU. A future GPU backend
-should accelerate the same Reference Renderer math without changing the
-algorithmic output.
+The Reference Renderer supports both a CPU implementation and an OpenGL 3.3
+GPU implementation. Automatic device selection prefers a discrete GPU, then an
+integrated GPU, and falls back to CPU without changing the projection math.
 
 ## Stereo Safety Rule
 
@@ -161,14 +161,14 @@ Cons:
 - Too slow for full 8K production.
 - Per-frame remap computation is expensive on CPU.
 
-Status: active prototype.
+Status: active.
 
 Execution backend:
 
-- Current: CPU.
-- Planned: GPU acceleration using the same ray-based projection math.
+- Current: NumPy CPU and OpenGL 3.3 GPU, with CPU fallback.
+- Official calibration uses the separate native Calibration Runtime boundary.
 
-The GPU backend should:
+The open GPU backend:
 
 - Select render device by priority: discrete GPU, integrated GPU, CPU fallback.
 - Upload source frames as GPU textures.

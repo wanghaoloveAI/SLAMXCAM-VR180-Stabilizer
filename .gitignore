@@ -15,6 +15,20 @@ dist/
 
 # Generated outputs and local media samples
 outputs/
+private_calibrations/
+/calibration_runtime/
+/private_calibration_runtime/
+/tmp/
+/videoandimu/
+/VR180-Silver-Bullet-main (1)/
+/VR180-Silver-Bullet-main (1).zip
+*.pdb
+*.slamimu
+*.slamimu-shm
+*.slamimu-wal
+*.frames.csv
+*.xlsx
+*.xlsm
 *.mp4
 *.mov
 *.mkv

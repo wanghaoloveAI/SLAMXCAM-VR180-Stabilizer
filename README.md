@@ -2,10 +2,9 @@
 
 Windows-first stabilizer prototype for SLAM XCAM VR180 3D footage.
 
-This repository is an early open-source prototype. It already includes a
-PySide6 desktop UI, IMU parsing, per-frame quaternion smoothing, and a CPU
-fisheye reprojection renderer. The CPU renderer is intended for correctness
-testing at low resolutions before the project moves to a Rust/wgpu GPU engine.
+This repository contains the open-source Windows application, PySide6 desktop
+UI, 6D VQF IMU processing, horizon stabilization, two-iteration rolling-shutter
+correction, and CPU/OpenGL Reference Renderers.
 
 ## Implementation Stack
 
@@ -14,13 +13,15 @@ The current prototype is mainly written in Python:
 - GUI: PySide6 / Qt for Python
 - video analysis and stabilization pipeline: Python
 - IMU parsing, quaternion integration, smoothing, and correction matrices: Python + NumPy
+- calibrated fisheye reprojection: NumPy CPU or OpenGL 3.3 GPU
 - video decoding, encoding, remuxing, and metadata writing: FFmpeg subprocesses
 - Windows executable packaging: PyInstaller
+- official calibration boundary: versioned native C ABI loaded with `ctypes`
 
-The current stabilization core is not yet written in Rust or C++. For production
-quality and speed, the recommended next step is to migrate the fisheye
-reprojection renderer and IMU/lens math core to Rust + wgpu/GPU acceleration,
-while keeping the desktop UI in Qt or moving it later to Tauri/egui.
+The application code is Apache-2.0 open source. Official measured SLAM XCAM
+2025/2026 calibration and its native renderer are distributed separately as a
+proprietary Calibration Runtime DLL. Users can instead supply their own JSON
+calibration and use the fully open CPU/OpenGL renderer.
 
 This project targets two input modes:
 
@@ -34,29 +35,27 @@ It also models two lens profiles:
 
 Calibration support:
 
-- The app supports per-model calibration files.
-- Public documentation intentionally does not publish sensor identifiers,
-  calibration matrices, distortion coefficients, RMS values, or private source
-  paths.
-- In the GUI, selecting `2025` or `2026` loads the matching local calibration
-  profile when available.
+- Official models automatically use the separately installed Calibration Runtime.
+- The runtime ABI is public, but official K/D parameters and runtime source are not.
+- Custom measured JSON calibration remains supported by the open renderer.
+- See [docs/CALIBRATION_RUNTIME.md](docs/CALIBRATION_RUNTIME.md).
 
 Current capabilities:
 
 - PySide6 Windows GUI inspired by Gyroflow and DJI Studio
 - SBS 2:1 fisheye input analysis
-- 50 Hz / 200 Hz SLAM XCAM IMU CSV parsing
-- quaternion integration and bidirectional SLERP smoothing
+- SLAM motion container plus legacy 50 Hz / 200 Hz IMU table parsing
+- 6D VQF gyro/accelerometer fusion and horizon-lock smoothing
 - per-frame correction matrix generation
-- CPU SBS fisheye reprojection renderer
+- two-iteration per-row rolling-shutter correction
+- CPU and OpenGL 3.3 SBS fisheye reprojection renderers
 - prototype H.264 MP4 output with VR180/SBS metadata tags
 
 Current limitations:
 
-- The renderer is CPU-only and slow at high resolution.
-- Lens profiles are placeholders until real 2025/2026 calibration files are available.
-- IMU axis/sign mapping and video/IMU offset still need calibration tools.
-- Rolling shutter correction is not implemented yet.
+- Official Calibration Runtime GPU acceleration is still planned; its initial
+  native implementation prioritizes isolation and output parity.
+- FFmpeg decode/encode is not yet hardware accelerated or zero-copy.
 - Dual left/right 1:1 fisheye input is planned but not fully rendered yet.
 
 ## Run On This Machine
@@ -79,9 +78,9 @@ CLI example:
 python -m slam_stabilizer.cli --input-sbs "D:\path\input.mp4" --imu "D:\path\imu.csv" --lens-profile config\lenses\slam_xcam_2026.json --calibration "D:\path\calibration.json" --output "D:\path\output_vr180.mp4" --render-width 1280
 ```
 
-If running from source, set `PYTHONPATH=src` or use the provided `.bat` launchers
-that point at the local Codex Python runtime on the original development
-machine.
+If running from source, set `PYTHONPATH=src` or use the provided `.bat` and
+PowerShell launchers. Set `PYTHON_EXE` only when the desired Python executable
+is not available as `python` in `PATH`.
 
 ## Expected IMU File
 
@@ -136,7 +135,11 @@ Inspect a matched video/IMU pair:
 
 See [config/calibration.schema.json](config/calibration.schema.json).
 
-The calibration file is where we will store per-lens intrinsics, distortion coefficients, stereo extrinsics, and optional IMU-to-camera rotation. The app can run without it for validation, but real stabilization quality depends on calibration.
+Custom calibration JSON stores user-provided lens intrinsics, distortion
+coefficients, stereo extrinsics, and optional IMU-to-camera rotation. When no
+custom JSON is selected, export requires the separately installed official
+Calibration Runtime. Public example files are documentation only and cannot be
+used for export.
 
 ## Windows Build Environment
 
@@ -163,3 +166,7 @@ Recommended long-term production stack:
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
+
+The separately distributed official Calibration Runtime and embedded measured
+calibration are proprietary and excluded from Apache-2.0. See
+[OFFICIAL_RUNTIME_LICENSE_NOTICE.md](OFFICIAL_RUNTIME_LICENSE_NOTICE.md).

@@ -4,7 +4,7 @@ SLAM XCAM 2025 and SLAM XCAM 2026 use the same external IMU CSV schema.
 The model choice only changes the lens calibration and distortion parameters,
 not the IMU parser or axis-processing pipeline.
 
-The provided sample file `Slam_20260524_140325_610_imu.csv` uses this header:
+The legacy IMU table uses this header:
 
 ```csv
 timestamp(us),acc_x,acc_y,acc_z,gyro_x,gyro_y,gyro_z
@@ -35,13 +35,6 @@ Important parser behavior:
 - VR180 3D output uses one shared IMU trajectory for both eyes. The left and
   right reprojection passes must receive the same per-frame correction
   quaternion.
-
-Additional observed SLAM XCAM header-only file:
-
-- `videoandimu/Slam_20260622_043403_304_imu.csv`
-- header: `timestamp(us),acc_x,acc_y,acc_z,gyro_x,gyro_y,gyro_z`
-- note: the checked file contains only the header, so it confirms schema but
-  cannot be used to estimate IMU rate or duration.
 
 Run:
 

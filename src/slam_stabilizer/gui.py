@@ -31,17 +31,13 @@ class App(tk.Tk):
         self._messages: queue.Queue[str] = queue.Queue()
 
         self.mode = tk.StringVar(value="sbs")
-        sample_video = _working_path("Slam_20260620_162535_456.mp4")
-        sample_imu = _working_path("Slam_20260620_162535_456_imu.csv")
-        sample_output = _working_path("outputs/Slam_20260620_162535_456_vr180_prototype.mp4")
-
-        self.input_sbs = tk.StringVar(value=str(sample_video) if sample_video.exists() else "")
+        self.input_sbs = tk.StringVar()
         self.input_left = tk.StringVar()
         self.input_right = tk.StringVar()
-        self.imu = tk.StringVar(value=str(sample_imu) if sample_imu.exists() else "")
+        self.imu = tk.StringVar()
         self.lens = tk.StringVar(value=str(_resource_path("config/lenses/slam_xcam_2026.json")))
         self.calibration = tk.StringVar()
-        self.output = tk.StringVar(value=str(sample_output))
+        self.output = tk.StringVar(value=str(_working_path("outputs/stabilized_vr180.mp4")))
 
         self._build()
         self.after(100, self._poll_messages)

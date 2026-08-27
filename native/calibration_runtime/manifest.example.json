@@ -1,0 +1,10 @@
+{
+  "format": "slam_xcam_calibration_runtime_manifest_v1",
+  "abi_version": 1,
+  "runtime_version": "1.0.0",
+  "models": [
+    "slam_xcam_2025",
+    "slam_xcam_2026"
+  ],
+  "sha256": "REPLACE_WITH_LOWERCASE_DLL_SHA256"
+}

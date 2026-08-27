@@ -469,7 +469,7 @@
             </div>
 
             <div class="auto-match" id="autoMatch">
-              Auto matched IMU: Slam_20260620_162535_456_imu.csv
+              Auto matched IMU: input_vr180_imu.csv
             </div>
           </div>
 
@@ -547,7 +547,7 @@
               <div class="algorithm-info" id="imageAlgorithmInfo">
                 <strong>Calibrated fisheye reprojection</strong>
                 <span>Projects each VR180 output ray back into the source fisheye image using the selected lens calibration.</span>
-                <span>Status: CPU reference renderer active; GPU renderer planned.</span>
+                <span>Status: CPU/OpenGL reference renderers active; official calibration uses the separate runtime.</span>
               </div>
             </div>
           </div>
@@ -561,7 +561,7 @@
       <section class="panel preview">
         <div class="preview-head">
           <div>
-            <h2 id="previewTitle">Slam_20260620_162535_456.mp4</h2>
+            <h2 id="previewTitle">input_vr180.mp4</h2>
             <div class="preview-details">
               <div class="meta" id="previewMeta">SLAM XCAM Model 2026 · VR1803D 鱼眼 · IMU Quaternion Smoothing + Fisheye Reprojection · 00:06.62 · 7680 x 3840</div>
               <div class="path-line" id="videoFolder">Video folder: D:\path</div>
@@ -666,11 +666,11 @@ Video mode: VR1803D 鱼眼</pre>
     };
 
     const videoInfo = {
-      "Slam_20260620_162535_456.mp4": {
+      "input_vr180.mp4": {
         duration: "00:06.62",
         size: "7680 x 3840"
       },
-      "Slam_20260622_024349_862.mp4": {
+      "sample_vr180.mp4": {
         duration: "00:06.59",
         size: "7680 x 3840"
       }

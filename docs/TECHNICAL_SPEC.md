@@ -112,12 +112,7 @@ Stereo rule:
 
 Current prototype implements parsing and basic gyro integration only.
 
-## Observed Sample Pair
-
-Files:
-
-- `Slam_20260620_162535_456.mp4`
-- `Slam_20260620_162535_456_imu.csv`
+## Validation Profile
 
 Video:
 

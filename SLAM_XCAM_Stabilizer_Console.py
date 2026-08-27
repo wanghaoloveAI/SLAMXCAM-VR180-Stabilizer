@@ -30,8 +30,8 @@ def ask(label: str, default: Path | None = None) -> Path:
 
 
 def inspect_pair() -> None:
-    video = ask("SBS video path", app_path("Slam_20260620_162535_456.mp4"))
-    imu = ask("IMU csv path", app_path("Slam_20260620_162535_456_imu.csv"))
+    video = ask("SBS video path")
+    imu = ask("IMU or SLAM motion path")
     report = ask("Report json output", app_path("outputs/pair_report.json"))
     original_argv = sys.argv[:]
     try:
@@ -42,8 +42,8 @@ def inspect_pair() -> None:
 
 
 def run_prototype() -> None:
-    video = ask("SBS video path", app_path("Slam_20260620_162535_456.mp4"))
-    imu = ask("IMU csv path", app_path("Slam_20260620_162535_456_imu.csv"))
+    video = ask("SBS video path")
+    imu = ask("IMU or SLAM motion path")
     lens = ask("Lens profile", resource_path("config/lenses/slam_xcam_2026.json"))
     calibration_raw = input("Calibration json path [optional]: ").strip().strip('"')
     output = ask("Output mp4", app_path("outputs/stabilizer_prototype.mp4"))

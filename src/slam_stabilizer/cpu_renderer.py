@@ -2,13 +2,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from statistics import median
 import subprocess
 from typing import Any
 
 import numpy as np
 
+from .core.quaternion import Quat
 from .core.stabilization import FrameStabilization
 from .process import hidden_subprocess_kwargs
+
+
+ROLLING_SHUTTER_ROW_ITERATIONS = 2
 
 
 @dataclass(frozen=True)
@@ -20,6 +25,35 @@ class CpuRenderOptions:
     field_of_view_deg: float = 180.0
 
 
+def build_cfr_frame_slots(
+    frame_times_s: list[float],
+    fallback_frame_rate: float,
+) -> tuple[float, list[int]]:
+    """Map variable capture timestamps onto nominal CFR slots without retiming frames."""
+
+    if not frame_times_s:
+        return max(1e-9, fallback_frame_rate), []
+    intervals = [
+        current - previous
+        for previous, current in zip(frame_times_s, frame_times_s[1:])
+        if current > previous
+    ]
+    nominal_frame_rate = (
+        1.0 / median(intervals)
+        if intervals
+        else max(1e-9, fallback_frame_rate)
+    )
+    origin = frame_times_s[0]
+    slots: list[int] = []
+    previous_slot = -1
+    for timestamp in frame_times_s:
+        desired_slot = int(round((timestamp - origin) * nominal_frame_rate))
+        slot = max(previous_slot + 1, desired_slot)
+        slots.append(slot)
+        previous_slot = slot
+    return nominal_frame_rate, slots
+
+
 def _build_eye_maps(
     eye_size: int,
     matrix: np.ndarray,
@@ -27,6 +61,8 @@ def _build_eye_maps(
     source_size: tuple[int, int] | None = None,
     distortion_correction: bool = True,
     field_of_view_deg: float = 180.0,
+    rolling_shutter_matrices: np.ndarray | None = None,
+    rolling_shutter_iterations: int = ROLLING_SHUTTER_ROW_ITERATIONS,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     center = (eye_size - 1) / 2.0
     radius = eye_size / 2.0
@@ -49,9 +85,42 @@ def _build_eye_maps(
         axis=0,
     ).reshape(3, -1)
 
-    src_dirs = matrix @ dirs
+    base_src_dirs = matrix @ dirs
+    src_dirs = base_src_dirs
+    lens_rotation = None
     if lens and lens.get("output_to_lens_rotation"):
         lens_rotation = np.array(lens["output_to_lens_rotation"], dtype=np.float32).reshape(3, 3)
+    if rolling_shutter_matrices is not None and len(rolling_shutter_matrices) > 0:
+        # The row-specific rotation changes the source row itself. Resolve that
+        # dependency twice, always applying the selected matrix to the base ray.
+        for _ in range(max(1, int(rolling_shutter_iterations))):
+            lookup_dirs = lens_rotation @ src_dirs if lens_rotation is not None else src_dirs
+            lookup_z = np.clip(lookup_dirs[2].reshape(eye_size, eye_size), -1.0, 1.0)
+            lookup_theta = np.arccos(lookup_z)
+            lookup_phi = np.arctan2(
+                lookup_dirs[1].reshape(eye_size, eye_size),
+                lookup_dirs[0].reshape(eye_size, eye_size),
+            )
+            if lens:
+                _, lookup_y = _project_calibrated_fisheye(
+                    theta=lookup_theta,
+                    phi=lookup_phi,
+                    eye_size=eye_size,
+                    lens=lens,
+                    source_size=source_size,
+                    distortion_correction=distortion_correction,
+                )
+            else:
+                lookup_radius = (lookup_theta / half_fov_rad) * radius
+                lookup_y = center - lookup_radius * np.sin(lookup_phi)
+            source_rows = np.clip(
+                np.rint(lookup_y),
+                0,
+                len(rolling_shutter_matrices) - 1,
+            ).astype(np.int32)
+            selected = rolling_shutter_matrices[source_rows.reshape(-1)]
+            src_dirs = np.einsum("nij,nj->ni", selected, base_src_dirs.T).T
+    if lens_rotation is not None:
         src_dirs = lens_rotation @ src_dirs
     x = src_dirs[0].reshape(eye_size, eye_size)
     y = src_dirs[1].reshape(eye_size, eye_size)
@@ -142,6 +211,7 @@ def _render_sbs_frame(
     source_size: tuple[int, int] | None = None,
     distortion_correction: bool = True,
     field_of_view_deg: float = 180.0,
+    rolling_shutter_matrices: np.ndarray | None = None,
 ) -> np.ndarray:
     height, width, _ = frame.shape
     eye_size = height
@@ -156,6 +226,7 @@ def _render_sbs_frame(
         source_size,
         distortion_correction,
         field_of_view_deg,
+        rolling_shutter_matrices,
     )
     right_map_x, right_map_y, right_valid = _build_eye_maps(
         eye_size,
@@ -164,6 +235,7 @@ def _render_sbs_frame(
         source_size,
         distortion_correction,
         field_of_view_deg,
+        rolling_shutter_matrices,
     )
     out[:, :eye_size, :] = _sample_bilinear(left, left_map_x, left_map_y, left_valid)
     out[:, eye_size : eye_size * 2, :] = _sample_bilinear(right, right_map_x, right_map_y, right_valid)
@@ -188,6 +260,7 @@ def render_stabilized_sbs_cpu(
     frame_rate: float,
     options: CpuRenderOptions,
     calibration: dict[str, Any] | None = None,
+    rolling_shutter_plan: list[np.ndarray] | None = None,
     progress=None,
 ) -> None:
     output_width = max(640, int(options.output_width))
@@ -196,6 +269,11 @@ def render_stabilized_sbs_cpu(
     output_height = output_width // 2
     eye_size = output_height
     frame_size = output_width * output_height * 3
+    output_frame_rate, frame_slots = build_cfr_frame_slots(
+        [frame.time_s for frame in frame_plan],
+        frame_rate,
+    )
+    output_frame_count = frame_slots[-1] + 1 if frame_slots else len(frame_plan)
     output_video.parent.mkdir(parents=True, exist_ok=True)
     left_lens = calibration.get("left") if calibration else None
     right_lens = calibration.get("right") if calibration else None
@@ -210,6 +288,11 @@ def render_stabilized_sbs_cpu(
         "-an",
         "-vf",
         f"scale={output_width}:{output_height}",
+        # Preserve one decoded image per captured frame. FFmpeg's default
+        # timestamp sync may otherwise insert frames before IMU correction,
+        # shifting every subsequent frame away from its Camera2 timestamp.
+        "-vsync",
+        "0",
         "-pix_fmt",
         "rgb24",
         "-f",
@@ -228,7 +311,7 @@ def render_stabilized_sbs_cpu(
         "-s",
         f"{output_width}x{output_height}",
         "-r",
-        f"{frame_rate:.6f}",
+        f"{output_frame_rate:.6f}",
         "-i",
         "-",
         "-i",
@@ -249,7 +332,8 @@ def render_stabilized_sbs_cpu(
         "copy",
         "-movflags",
         "+faststart",
-        "-shortest",
+        "-t",
+        f"{output_frame_count / max(1e-9, output_frame_rate):.6f}",
         "-metadata:s:v:0",
         "stereo_mode=left_right",
         "-metadata:s:v:0",
@@ -279,6 +363,8 @@ def render_stabilized_sbs_cpu(
 
     try:
         total = len(frame_plan)
+        previous_rendered: np.ndarray | None = None
+        next_output_slot = 0
         for index, frame_stab in enumerate(frame_plan):
             raw = decode.stdout.read(frame_size)
             if len(raw) < frame_size:
@@ -293,11 +379,33 @@ def render_stabilized_sbs_cpu(
                 source_size,
                 options.distortion_correction,
                 options.field_of_view_deg,
+                (
+                    rolling_shutter_plan[index]
+                    if rolling_shutter_plan is not None and index < len(rolling_shutter_plan)
+                    else None
+                ),
             )
+            target_slot = frame_slots[index] if index < len(frame_slots) else next_output_slot
+            while next_output_slot < target_slot:
+                filler = previous_rendered if previous_rendered is not None else rendered
+                encode.stdin.write(filler.tobytes())
+                next_output_slot += 1
             encode.stdin.write(rendered.tobytes())
-            if progress and (index % 5 == 0 or index + 1 == total):
+            next_output_slot += 1
+            previous_rendered = rendered
+            if progress:
                 percent = 82 + int((index + 1) * 16 / max(1, total))
-                progress(min(98, percent), f"Rendering stabilized frame {index + 1}/{total}")
+                correction_deg = Quat.identity().angular_distance_deg(
+                    Quat.from_iter(frame_stab.correction_wxyz)
+                )
+                progress(
+                    min(98, percent),
+                    (
+                        f"Rendering frame {index + 1}/{total} | "
+                        f"video={frame_stab.time_s:.6f}s | correction={correction_deg:.3f}deg"
+                        f"{' | rolling-shutter rows active' if rolling_shutter_plan else ''}"
+                    ),
+                )
     finally:
         try:
             encode.stdin.close()

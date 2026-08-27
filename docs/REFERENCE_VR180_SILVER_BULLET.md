@@ -32,7 +32,9 @@ The useful pattern is:
 2. Smooth the trajectory with bidirectional velocity-dampened SLERP.
 3. Clamp extreme correction softly so output does not demand impossible crop/FOV.
 4. For each video frame, interpolate both raw and smoothed trajectory at frame time.
-5. Use `q_heading = q_raw * inverse(q_smooth)` as the correction rotation.
+5. Convert the smoothed output camera ray into the raw source camera frame.
+   In this renderer convention the sampling correction is
+   `q_correction = inverse(q_raw) * q_smooth`.
 6. Send the correction matrix to the fisheye renderer.
 
 Silver Bullet also treats rolling shutter as a first-class path by computing

@@ -88,7 +88,7 @@ load IMU
 -> apply shared IMU-to-camera transform
 -> smooth q_raw(t) with a quaternion low-pass / bidirectional smoother
 -> sample q_raw and q_smooth at each video frame timestamp
--> correction_q = q_raw * inverse(q_smooth)
+-> correction_q = inverse(q_raw) * q_smooth
 ```
 
 Recommended parameters:
@@ -127,7 +127,7 @@ load IMU
 -> apply shared IMU-to-camera transform
 -> smooth fused orientation
 -> sample per video frame
--> correction_q = q_fused_raw * inverse(q_fused_smooth)
+-> correction_q = inverse(q_fused_raw) * q_fused_smooth
 ```
 
 Recommended parameters:
@@ -147,8 +147,9 @@ Behavior:
 
 Implementation status:
 
-- Design target for the second IMU pass.
-- The loader already stores `acc_x/acc_y/acc_z`; fusion math is still planned.
+- Active production path using the vendored official PyVQF implementation.
+- Uses gyroscope and accelerometer samples for magnetometer-free 6D fusion,
+  bias estimation, and rest detection.
 
 ## Strategy C: Gyroflow-Style Sync + Smoothing Window
 

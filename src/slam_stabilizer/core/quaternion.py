@@ -21,6 +21,42 @@ class Quat:
     def from_iter(cls, values: tuple[float, float, float, float] | list[float]) -> "Quat":
         return cls(float(values[0]), float(values[1]), float(values[2]), float(values[3])).normalized()
 
+    @classmethod
+    def from_matrix3(cls, matrix: list[list[float]]) -> "Quat":
+        m = matrix
+        trace = m[0][0] + m[1][1] + m[2][2]
+        if trace > 0.0:
+            s = sqrt(trace + 1.0) * 2.0
+            return cls(
+                0.25 * s,
+                (m[2][1] - m[1][2]) / s,
+                (m[0][2] - m[2][0]) / s,
+                (m[1][0] - m[0][1]) / s,
+            ).normalized()
+        if m[0][0] > m[1][1] and m[0][0] > m[2][2]:
+            s = sqrt(1.0 + m[0][0] - m[1][1] - m[2][2]) * 2.0
+            return cls(
+                (m[2][1] - m[1][2]) / s,
+                0.25 * s,
+                (m[0][1] + m[1][0]) / s,
+                (m[0][2] + m[2][0]) / s,
+            ).normalized()
+        if m[1][1] > m[2][2]:
+            s = sqrt(1.0 + m[1][1] - m[0][0] - m[2][2]) * 2.0
+            return cls(
+                (m[0][2] - m[2][0]) / s,
+                (m[0][1] + m[1][0]) / s,
+                0.25 * s,
+                (m[1][2] + m[2][1]) / s,
+            ).normalized()
+        s = sqrt(1.0 + m[2][2] - m[0][0] - m[1][1]) * 2.0
+        return cls(
+            (m[1][0] - m[0][1]) / s,
+            (m[0][2] + m[2][0]) / s,
+            (m[1][2] + m[2][1]) / s,
+            0.25 * s,
+        ).normalized()
+
     def as_tuple(self) -> tuple[float, float, float, float]:
         return (self.w, self.x, self.y, self.z)
 
@@ -81,6 +117,11 @@ class Quat:
         rel = other.mul(self.conjugate())
         angle = 2.0 * acos(max(0.0, min(1.0, abs(rel.w))))
         return degrees(angle)
+
+    def rotate_vector(self, vector: tuple[float, float, float] | list[float]) -> tuple[float, float, float]:
+        p = Quat(0.0, float(vector[0]), float(vector[1]), float(vector[2]))
+        rotated = self.mul(p).mul(self.conjugate())
+        return (rotated.x, rotated.y, rotated.z)
 
     def to_matrix3(self) -> list[list[float]]:
         q = self.normalized()

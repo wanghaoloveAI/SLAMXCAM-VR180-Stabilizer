@@ -18,9 +18,22 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--calibration", type=Path, help="Optional calibrated lens/stereo JSON")
     parser.add_argument("--output", required=True, type=Path, help="Output VR180 video path")
     parser.add_argument("--ffmpeg", default="ffmpeg", help="FFmpeg executable")
-    parser.add_argument("--imu-offset-s", type=float, default=0.0, help="IMU time offset relative to video")
+    parser.add_argument("--imu-offset-s", type=float, default=-0.167, help="IMU time offset relative to video")
+    parser.add_argument("--gyro-scale", type=float, default=0.45, help="Scale applied to mapped gyro values")
+    parser.add_argument(
+        "--max-correction-velocity-deg-s",
+        type=float,
+        default=25.0,
+        help="Maximum frame-to-frame correction angular velocity",
+    )
     parser.add_argument("--smooth-ms", type=float, default=1000.0, help="Stabilization smoothing time")
     parser.add_argument("--max-correction-deg", type=float, default=15.0, help="Soft correction limit")
+    parser.add_argument(
+        "--stabilization-mode",
+        default="normal",
+        choices=["normal", "horizon-lock"],
+        help="Stabilization mode. normal is active; horizon-lock is planned.",
+    )
     parser.add_argument(
         "--imu-algorithm",
         default="gyro-integration-smoothing",
@@ -68,8 +81,11 @@ def main() -> int:
             output_path=args.output,
             ffmpeg=args.ffmpeg,
             imu_offset_s=args.imu_offset_s,
+            gyro_scale=args.gyro_scale,
+            max_correction_velocity_deg_s=args.max_correction_velocity_deg_s,
             smooth_ms=args.smooth_ms,
             max_correction_deg=args.max_correction_deg,
+            stabilization_mode=args.stabilization_mode,
             imu_algorithm=args.imu_algorithm,
             image_algorithm=args.image_algorithm,
             render_mode=args.render_mode,

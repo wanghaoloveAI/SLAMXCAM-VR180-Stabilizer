@@ -37,11 +37,19 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .imu import load_imu_csv, summarize_rate
+from .imu import load_imu_csv, load_slamimu, summarize_rate
 from .models import VideoInput
 from .pipeline import StabilizationJob, normalize_image_algorithm, run_job
 from .process import hidden_subprocess_kwargs
 from .video_probe import classify_layout, ffprobe_json, format_duration_s, parse_rate, primary_video_stream, stream_duration_s
+
+
+ACTIVE_IMU_ALGORITHM = "gyro-acc-fusion"
+ACTIVE_IMU_ALGORITHM_LABEL = "6D VQF 陀螺 + 加速度融合"
+ACTIVE_IMAGE_ALGORITHM = "reference-renderer"
+ACTIVE_IMAGE_ALGORITHM_LABEL = "Reference Renderer 标定鱼眼重投影"
+ACTIVE_STABILIZATION_MODE = "horizon-lock"
+ACTIVE_STABILIZATION_MODE_LABEL = "地平线防抖模式"
 
 
 def resource_path(relative: str) -> Path:
@@ -84,12 +92,13 @@ class Worker(QObject):
         if not str(video_path):
             raise ValueError("Please select an SBS video, or switch to separate left/right mode and select a left video.")
         if not str(imu_path):
-            raise ValueError("Please select an IMU CSV file.")
+            raise ValueError("Please select an IMU or SLAM motion file.")
         self._emit_progress(20, "Reading video metadata")
         probe = ffprobe_json(video_path)
         stream = primary_video_stream(probe)
         self._emit_progress(45, "Parsing IMU file")
-        samples = load_imu_csv(imu_path)
+        motion = load_slamimu(imu_path) if imu_path.suffix.lower() == ".slamimu" else None
+        samples = motion.samples if motion else load_imu_csv(imu_path)
         width = int(stream.get("width", 0))
         height = int(stream.get("height", 0))
         duration = stream_duration_s(stream) or format_duration_s(probe)
@@ -112,9 +121,12 @@ class Worker(QObject):
             },
             "imu": {
                 "path": str(imu_path),
+                "format": "slamimu_sqlite" if motion else "legacy_table",
                 "samples": len(samples),
                 "duration_s": imu_duration,
                 "rate_hz": summarize_rate(samples),
+                "timed_video_frames": len(motion.frame_times_s) if motion else None,
+                "rolling_shutter_skew_s": motion.rolling_shutter_skew_s if motion else None,
             },
             "sync": {
                 "duration_delta_s": imu_duration - duration,
@@ -132,7 +144,8 @@ class Worker(QObject):
             "Pair analysis complete.\n"
             f"Video: {width}x{height}, {stream.get('codec_name')}, {duration:.6f}s, {fps:.3f}fps, {frames} frames\n"
             f"Layout: {report['video']['layout']}\n"
-            f"IMU: {len(samples)} samples, {imu_duration:.6f}s, {report['imu']['rate_hz']:.3f}Hz\n"
+            f"IMU: {len(samples)} samples, {imu_duration:.6f}s, {report['imu']['rate_hz']:.3f}Hz"
+            f"{f', {len(motion.frame_times_s)} timed frames' if motion else ''}\n"
             f"IMU - video duration: {report['sync']['duration_delta_s']:.6f}s\n"
             f"Embedded data streams: {len(data_streams)}\n"
             f"Report: {report_path}\n"
@@ -156,11 +169,13 @@ class Worker(QObject):
                 lens_profile_path=Path(self.payload["lens"]),
                 calibration_path=Path(calibration) if calibration else None,
                 output_path=output,
-                imu_offset_s=float(self.payload.get("imu_offset_s", "0") or 0),
+                imu_offset_s=0.0,
+                gyro_scale=1.0,
                 smooth_ms=float(self.payload.get("smooth_ms", "1000") or 1000),
                 max_correction_deg=float(self.payload.get("max_correction_deg", "15") or 15),
-                imu_algorithm=self.payload.get("imu_algorithm", "gyro-integration-smoothing"),
-                image_algorithm=self.payload.get("image_algorithm", "reference-renderer"),
+                imu_algorithm=ACTIVE_IMU_ALGORITHM,
+                stabilization_mode=ACTIVE_STABILIZATION_MODE,
+                image_algorithm=ACTIVE_IMAGE_ALGORITHM,
                 distortion_correction=self.payload.get("distortion_correction", "true") == "true",
                 field_of_view_deg=float(self.payload.get("field_of_view_deg", "180") or 180),
                 output_projection=self.payload.get("output_projection", "VR180 fisheye SBS"),
@@ -170,11 +185,20 @@ class Worker(QObject):
             ),
             progress=self._emit_progress,
         )
+        plan_data = json.loads(plan.read_text(encoding="utf-8"))
+        renderer = plan_data.get("export", {}).get("renderer_execution", {})
+        renderer_name = renderer.get("name", "Unknown renderer")
+        renderer_api = renderer.get("api", "CPU")
+        fallback_reason = renderer.get("fallback_reason")
+        fallback_line = f"GPU fallback reason: {fallback_reason}\n" if fallback_reason else ""
         return (
             "Stabilization run complete.\n"
             "Reference Renderer active: calibrated fisheye reprojection rendered stabilized pixels.\n"
+            f"Actual render device: {renderer_name} ({renderer_api})\n"
+            f"{fallback_line}"
             f"Output video: {output}\n"
             f"Plan JSON: {plan}\n"
+            f"Per-frame diagnostics: {output.with_suffix(output.suffix + '.frames.csv')}\n"
         )
 
     def _emit_progress(self, percent: int, message: str) -> None:
@@ -201,13 +225,10 @@ class MainWindow(QMainWindow):
         self.left_tab_buttons: list[QPushButton] = []
         self.left_stack: QStackedWidget | None = None
 
-        sample_video = app_path("Slam_20260620_162535_456.mp4")
-        sample_imu = app_path("Slam_20260620_162535_456_imu.csv")
-
-        self.sbs = QLineEdit(str(sample_video) if sample_video.exists() else "")
+        self.sbs = QLineEdit()
         self.left = QLineEdit()
         self.right = QLineEdit()
-        self.imu = QLineEdit(str(sample_imu) if sample_imu.exists() else "")
+        self.imu = QLineEdit()
         self.calibration = QLineEdit()
         self.output_dir = QLineEdit()
         self.output = QLineEdit()
@@ -216,7 +237,14 @@ class MainWindow(QMainWindow):
         self.imu_offset.setRange(-10.0, 10.0)
         self.imu_offset.setDecimals(3)
         self.imu_offset.setSingleStep(0.005)
+        self.imu_offset.setValue(-0.167)
         self.imu_offset.setSuffix(" s")
+        self.gyro_scale = QDoubleSpinBox()
+        self.gyro_scale.setRange(0.10, 3.00)
+        self.gyro_scale.setDecimals(3)
+        self.gyro_scale.setSingleStep(0.01)
+        self.gyro_scale.setValue(0.45)
+        self.gyro_scale.setSuffix(" x")
         self.smooth_ms = QDoubleSpinBox()
         self.smooth_ms.setRange(0.0, 5000.0)
         self.smooth_ms.setValue(1000.0)
@@ -275,18 +303,20 @@ class MainWindow(QMainWindow):
         self.saturation = self._slider(-50, 50, 0)
         self.temperature = self._slider(-100, 100, 0)
 
-        self.imu_algorithm = QComboBox()
-        self.imu_algorithm.addItem("方案 A: 基础陀螺积分 + 平滑姿态曲线", "gyro-integration-smoothing")
-        self.imu_algorithm.addItem("方案 B: 陀螺 + 加速度融合", "gyro-acc-fusion")
-        self.imu_algorithm.addItem("方案 C: Gyroflow 风格同步 + 平滑窗口", "gyroflow-style-sync")
+        self.imu_algorithm_label = QLabel(ACTIVE_IMU_ALGORITHM_LABEL)
+        self.imu_algorithm_label.setObjectName("fixedAlgorithm")
         self.imu_algorithm_info = QLabel()
         self.imu_algorithm_info.setWordWrap(True)
 
-        self.image_algorithm = QComboBox()
-        self.image_algorithm.addItem("Reference Renderer: 标定鱼眼重投影", "reference-renderer")
-        self.image_algorithm.addItem("STMap Renderer: STMap 查表重映射", "stmap-renderer")
+        self.image_algorithm_label = QLabel(ACTIVE_IMAGE_ALGORITHM_LABEL)
+        self.image_algorithm_label.setObjectName("fixedAlgorithm")
         self.image_algorithm_info = QLabel()
         self.image_algorithm_info.setWordWrap(True)
+
+        self.stabilization_mode_label = QLabel(ACTIVE_STABILIZATION_MODE_LABEL)
+        self.stabilization_mode_label.setObjectName("fixedAlgorithm")
+        self.stabilization_mode_info = QLabel()
+        self.stabilization_mode_info.setWordWrap(True)
 
         for field in [
             self.sbs,
@@ -296,22 +326,15 @@ class MainWindow(QMainWindow):
             self.distortion_correction,
             self.field_of_view,
             self.lut,
-            self.imu_algorithm,
-            self.image_algorithm,
+            self.imu_algorithm_label,
+            self.image_algorithm_label,
+            self.stabilization_mode_label,
             self.render_backend,
         ]:
             field.setFixedHeight(40)
 
         self.calibration_presets = QComboBox()
-        self.calibration_presets.addItem("Custom / none", "")
-        self.calibration_presets.addItem(
-            "SLAM XCAM 2026 example calibration",
-            str(resource_path("config/calibrations/slam_xcam_2026_calibration.example.json")),
-        )
-        self.calibration_presets.addItem(
-            "SLAM XCAM 2025 example calibration",
-            str(resource_path("config/calibrations/slam_xcam_2025_calibration.example.json")),
-        )
+        self.calibration_presets.addItem("Official Calibration Runtime (auto)", "")
         self.calibration_presets.currentIndexChanged.connect(self._apply_calibration_preset)
         self.model.currentIndexChanged.connect(self._apply_model_defaults)
         self.model.currentIndexChanged.connect(self._refresh_preview_details)
@@ -319,10 +342,6 @@ class MainWindow(QMainWindow):
         self.distortion_correction.currentIndexChanged.connect(self._refresh_preview_details)
         self.field_of_view.currentIndexChanged.connect(self._refresh_preview_details)
         self.lut.currentIndexChanged.connect(self._refresh_preview_details)
-        self.imu_algorithm.currentIndexChanged.connect(self._refresh_algorithm_info)
-        self.imu_algorithm.currentIndexChanged.connect(self._refresh_preview_details)
-        self.image_algorithm.currentIndexChanged.connect(self._refresh_algorithm_info)
-        self.image_algorithm.currentIndexChanged.connect(self._refresh_preview_details)
         self.render_backend.currentIndexChanged.connect(self._refresh_preview_details)
 
         self.log = QPlainTextEdit()
@@ -398,6 +417,7 @@ class MainWindow(QMainWindow):
             QPushButton { background: #1f6feb; color: white; border: none; border-radius: 6px; padding: 8px 12px; font-weight: 600; }
             QPushButton:hover { background: #2b7df5; }
             QLineEdit, QComboBox { background: #ffffff; border: 1px solid #cfd6df; border-radius: 6px; padding-left: 10px; padding-right: 10px; }
+            QLabel#fixedAlgorithm { background: #f8fafc; border: 1px solid #cfd6df; border-radius: 6px; padding: 0 10px; color: #111827; font-weight: 600; }
             QDoubleSpinBox, QPlainTextEdit { background: #ffffff; border: 1px solid #cfd6df; border-radius: 5px; padding: 5px; }
             QSpinBox { background: #ffffff; border: 1px solid #cfd6df; border-radius: 5px; padding: 5px; }
             QPlainTextEdit { font-family: Consolas, monospace; }
@@ -471,18 +491,36 @@ class MainWindow(QMainWindow):
         layout.addWidget(self._field("Video mode", self.video_mode))
         layout.addWidget(self._field("畸变矫正", self.distortion_correction))
         layout.addWidget(self._field("视场角", self.field_of_view))
+        layout.addWidget(self._field("Calibration source", self.calibration_presets))
+        layout.addWidget(
+            self._field(
+                "Custom calibration JSON",
+                self._file_row(
+                    self.calibration,
+                    "Calibration JSON (*.json);;All files (*.*)",
+                    "Choose JSON",
+                ),
+            )
+        )
         layout.addWidget(
             self._field(
                 "Choose video",
                 self._file_row(self.sbs, "Video files (*.mp4 *.mov *.mkv);;All files (*.*)", "Choose video"),
             )
         )
-        hint = QLabel("选择视频后自动查找同目录同名 IMU，例如 video_imu.csv。")
+        hint = QLabel("选择视频后优先匹配同目录的 video_motion.slamimu，也兼容旧版 video_imu.csv。")
         hint.setWordWrap(True)
         hint.setStyleSheet("color: #6b7280; font-size: 12px;")
         layout.addWidget(hint)
         layout.addWidget(
-            self._field("Choose IMU", self._file_row(self.imu, "IMU files (*.csv *.xlsx *.xlsm);;All files (*.*)", "Choose IMU"))
+            self._field(
+                "Choose IMU",
+                self._file_row(
+                    self.imu,
+                    "SLAM motion files (*.slamimu);;Legacy IMU files (*.csv *.xlsx *.xlsm);;All files (*.*)",
+                    "Choose IMU",
+                ),
+            )
         )
         self.auto_match_label.setStyleSheet(
             "background: #e8f1ff; color: #174ea6; border: 1px solid #c7dcff; border-radius: 8px; padding: 8px;"
@@ -518,10 +556,13 @@ class MainWindow(QMainWindow):
         form.setSpacing(8)
         self.imu_algorithm_info.setStyleSheet("background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; color: #4b5563;")
         self.image_algorithm_info.setStyleSheet("background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; color: #4b5563;")
-        form.addWidget(self._field("IMU处理算法", self.imu_algorithm))
+        self.stabilization_mode_info.setStyleSheet("background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; color: #4b5563;")
+        form.addWidget(self._field("IMU处理算法", self.imu_algorithm_label))
         form.addWidget(self.imu_algorithm_info)
-        form.addWidget(self._field("图像处理算法", self.image_algorithm))
+        form.addWidget(self._field("图像处理算法", self.image_algorithm_label))
         form.addWidget(self.image_algorithm_info)
+        form.addWidget(self._field("防抖模式", self.stabilization_mode_label))
+        form.addWidget(self.stabilization_mode_info)
         form.addWidget(self._field("渲染设备", self.render_backend))
         form.addStretch(1)
         return tab
@@ -673,6 +714,8 @@ class MainWindow(QMainWindow):
         path, _ = QFileDialog.getOpenFileName(self, "Select file", "", filter_text)
         if path:
             line.setText(path)
+            if line is self.imu:
+                self._apply_motion_file_defaults(Path(path))
             if line is self.sbs or line is self.left:
                 video_path = Path(path)
                 self._set_preview_video(video_path, load_thumbnail=False)
@@ -693,39 +736,33 @@ class MainWindow(QMainWindow):
 
     def _apply_calibration_preset(self) -> None:
         path = self.calibration_presets.currentData()
-        if path:
-            self.calibration.setText(str(path))
+        self.calibration.setText(str(path or ""))
 
     def _apply_model_defaults(self) -> None:
         if not hasattr(self, "calibration_presets"):
             return
         model = self.model.currentText()
-        calibration_path = (
-            resource_path("config/calibrations/slam_xcam_2025_calibration.example.json")
-            if model == "2025"
-            else resource_path("config/calibrations/slam_xcam_2026_calibration.example.json")
-        )
-        self.calibration.setText(str(calibration_path))
+        self.calibration.setText("")
         for index in range(self.calibration_presets.count()):
-            if self.calibration_presets.itemData(index) == str(calibration_path):
+            if self.calibration_presets.itemData(index) == "":
                 self.calibration_presets.setCurrentIndex(index)
                 break
         self._refresh_preview_details()
 
     def _refresh_algorithm_info(self) -> None:
-        imu_descriptions = {
-            "gyro-integration-smoothing": ("方案 A: 基础陀螺积分 + 平滑姿态曲线", "200Hz gyro 按真实 timestamp 积分成姿态曲线，再根据 30/50fps 的视频帧时间插值并平滑。", "Status: active default."),
-            "gyro-acc-fusion": ("方案 B: 陀螺 + 加速度融合", "用加速度低通估计重力方向，辅助修正横屏拍摄时明显的 roll/pitch 漂移。", "Status: planned."),
-            "gyroflow-style-sync": ("方案 C: Gyroflow 风格同步 + 平滑窗口", "重点处理 video/IMU offset，同步后在帧时间轴上做可调窗口平滑。", "Status: planned."),
-        }
-        image_descriptions = {
-            "reference-renderer": ("Reference Renderer: 标定鱼眼重投影", "算法路径是 ray-based reprojection：输出像素变成 VR180 ray，乘以 IMU 防抖旋转，再用镜头 K/D 参数投影回原始鱼眼画面。", "Status: active. 执行芯片由下面的渲染设备策略选择。"),
-            "stmap-renderer": ("STMap Renderer: STMap 查表重映射", "使用预计算 STMap 作为镜头映射表，减少实时投影计算。后续会绑定本地模型 STMap 文件。", "Status: planned."),
-        }
-        imu = imu_descriptions.get(self.imu_algorithm.currentData(), imu_descriptions["gyro-integration-smoothing"])
-        image = image_descriptions.get(self.image_algorithm.currentData(), image_descriptions["reference-renderer"])
-        self.imu_algorithm_info.setText(f"{imu[0]}\n{imu[1]}\n{imu[2]}")
-        self.image_algorithm_info.setText(f"{image[0]}\n{image[1]}\n{image[2]}")
+        self.imu_algorithm_info.setText(
+            "官方 PyVQF 对 200Hz 陀螺和加速度做无磁姿态融合、零偏估计和静止检测。"
+            "当前 pipeline 固定使用此算法。"
+        )
+        self.image_algorithm_info.setText(
+            "输出像素转换为 VR180 ray，应用同一套双目 IMU 防抖旋转，"
+            "再通过真实镜头 K/D 参数投影回源鱼眼。优先使用 OpenGL GPU，"
+            "GPU 不可用时自动回退 CPU。"
+        )
+        self.stabilization_mode_info.setText(
+            "当前只开发地平线防抖：平滑相机姿态并锁定横滚。"
+            "普通防抖和其他模式暂不进入正式 pipeline。"
+        )
 
     def _auto_match_imu(self, video: Path, force: bool = False) -> None:
         if not video:
@@ -733,6 +770,7 @@ class MainWindow(QMainWindow):
         if self.imu.text() and not force:
             return
         candidates = [
+            video.with_name(f"{video.stem}_motion.slamimu"),
             video.with_name(f"{video.stem}_imu.csv"),
             video.with_name(f"{video.stem}_IMU.csv"),
             video.with_suffix(".csv"),
@@ -740,14 +778,25 @@ class MainWindow(QMainWindow):
         for candidate in candidates:
             if candidate.exists():
                 self.imu.setText(str(candidate))
+                self._apply_motion_file_defaults(candidate)
                 self.log.appendPlainText(f"Auto matched IMU: {candidate}\n")
                 self.auto_match_label.setText(f"Auto matched IMU:\n{candidate.name}")
                 self.auto_match_label.show()
                 return
         if force:
-            self.log.appendPlainText(f"No matching IMU CSV found next to video: {video.name}\n")
-            self.auto_match_label.setText("No matching IMU CSV found next to the selected video.")
+            self.log.appendPlainText(f"No matching SLAM motion or legacy IMU file found next to video: {video.name}\n")
+            self.auto_match_label.setText("No matching motion data found next to the selected video.")
             self.auto_match_label.show()
+
+    def _apply_motion_file_defaults(self, path: Path) -> None:
+        if path.suffix.lower() != ".slamimu":
+            return
+        self.imu_offset.setValue(0.0)
+        self.gyro_scale.setValue(1.0)
+        self.log.appendPlainText(
+            "SLAM motion timing detected: fixed 6D VQF pipeline, gyro scale 1.0x, "
+            "manual IMU offset set to 0s, and per-row rolling shutter enabled.\n"
+        )
 
     def _selected_video_path(self) -> Path | None:
         text = self.sbs.text() if self._pipeline_video_mode() == "sbs" else self.left.text()
@@ -798,7 +847,10 @@ class MainWindow(QMainWindow):
         video = self._selected_video_path()
         video_folder = str(video.parent) if video else "--"
         save_folder = self.output_dir.text() or video_folder
-        algorithm = f"{self.imu_algorithm.currentText()} + {self.image_algorithm.currentText()}"
+        algorithm = (
+            f"{ACTIVE_IMU_ALGORITHM_LABEL} + {ACTIVE_IMAGE_ALGORITHM_LABEL} + "
+            f"{ACTIVE_STABILIZATION_MODE_LABEL}"
+        )
         self.preview_stats.setText(
             f"SLAM XCAM Model {self.model.currentText()} · {self.video_mode.currentText()} · "
             f"畸变矫正 {self.distortion_correction.currentText()} · 视场角 {self.field_of_view.currentText()} · "
@@ -892,7 +944,8 @@ class MainWindow(QMainWindow):
             "output": self.output.text(),
             "output_dir": self.output_dir.text(),
             "report": self.report.text(),
-            "imu_offset_s": f"{self.imu_offset.value():.6f}",
+            "imu_offset_s": "0.000000",
+            "gyro_scale": "1.000000",
             "smooth_ms": f"{self.smooth_ms.value():.3f}",
             "max_correction_deg": f"{self.max_correction.value():.3f}",
             "output_projection": self.output_projection.currentText(),
@@ -900,8 +953,9 @@ class MainWindow(QMainWindow):
             "render_width": str(self.render_width.value()),
             "render_backend": self.render_backend.currentData(),
             "lut": self.lut.currentData(),
-            "imu_algorithm": self.imu_algorithm.currentData(),
-            "image_algorithm": self.image_algorithm.currentData(),
+            "imu_algorithm": ACTIVE_IMU_ALGORITHM,
+            "image_algorithm": ACTIVE_IMAGE_ALGORITHM,
+            "stabilization_mode": ACTIVE_STABILIZATION_MODE,
         }
 
     def inspect_pair(self) -> None:
@@ -971,7 +1025,7 @@ class MainWindow(QMainWindow):
             if not payload.get("left") or not payload.get("right"):
                 raise ValueError("Please select both left and right videos.")
         if not payload.get("imu"):
-            raise ValueError("Please select an IMU CSV file.")
+            raise ValueError("Please select an IMU or SLAM motion file.")
         if action == "prototype" and not payload.get("output"):
             raise ValueError("Please choose an output MP4 path.")
         if action == "prototype" and normalize_image_algorithm(payload.get("image_algorithm", "")) != "reference-renderer":
@@ -1028,7 +1082,14 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Analysis complete", "Video + IMU analysis is complete.")
         elif "Stabilization run complete." in message or "Prototype run complete." in message:
             self.preview_title.setText("Stabilization complete")
-            self.preview_stats.setText("Reference Renderer calibrated fisheye reprojection output was written.")
+            device_line = next(
+                (line for line in message.splitlines() if line.startswith("Actual render device:")),
+                "Actual render device: CPU",
+            )
+            self.preview_stats.setText(
+                "Reference Renderer calibrated fisheye reprojection output was written.\n"
+                f"{device_line}"
+            )
             self.preview_timeline.setValue(100)
             QMessageBox.information(self, "Stabilization complete", "Prototype stabilization output is complete.")
         self._set_busy(False)

@@ -99,6 +99,61 @@ def soft_elastic_clamp(raw: Quat, smoothed: Quat, max_corr_deg: float) -> Quat:
     return raw.slerp(smoothed, t)
 
 
+def stabilization_correction(raw: Quat, smoothed: Quat) -> Quat:
+    """Map an output ray in the target camera into the raw source camera."""
+
+    return raw.conjugate().mul(smoothed)
+
+
+def _dot(a: tuple[float, float, float], b: tuple[float, float, float]) -> float:
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+
+
+def _cross(a: tuple[float, float, float], b: tuple[float, float, float]) -> tuple[float, float, float]:
+    return (
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    )
+
+
+def _normalize_vec(v: tuple[float, float, float]) -> tuple[float, float, float] | None:
+    norm = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]) ** 0.5
+    if norm <= 1e-9:
+        return None
+    return (v[0] / norm, v[1] / norm, v[2] / norm)
+
+
+def horizon_locked_target(smoothed: Quat) -> Quat:
+    """Keep local +Z optical direction and remove roll around that Z axis."""
+
+    world_up = (0.0, 1.0, 0.0)
+    forward = _normalize_vec(smoothed.rotate_vector((0.0, 0.0, 1.0)))
+    if forward is None:
+        return smoothed
+    projected_up = (
+        world_up[0] - _dot(world_up, forward) * forward[0],
+        world_up[1] - _dot(world_up, forward) * forward[1],
+        world_up[2] - _dot(world_up, forward) * forward[2],
+    )
+    up = _normalize_vec(projected_up)
+    if up is None:
+        return smoothed
+    right = _normalize_vec(_cross(up, forward))
+    if right is None:
+        return smoothed
+    up = _normalize_vec(_cross(forward, right))
+    if up is None:
+        return smoothed
+    return Quat.from_matrix3(
+        [
+            [right[0], up[0], forward[0]],
+            [right[1], up[1], forward[1]],
+            [right[2], up[2], forward[2]],
+        ]
+    )
+
+
 def build_frame_stabilization(
     imu_times: list[float],
     imu_quats: list[Quat],
@@ -106,18 +161,26 @@ def build_frame_stabilization(
     frame_rate: float,
     imu_offset_s: float = 0.0,
     params: SmoothParams = SmoothParams(),
+    stabilization_mode: str = "normal",
+    frame_times_s: list[float] | None = None,
+    imu_query_times_s: list[float] | None = None,
 ) -> list[FrameStabilization]:
+    if frame_times_s is not None:
+        frame_count = len(frame_times_s)
     if frame_count <= 0 or frame_rate <= 0:
         return []
     smoothed = bidirectional_smooth(imu_times, imu_quats, params)
     frames: list[FrameStabilization] = []
     for frame_index in range(frame_count):
-        video_t = frame_index / frame_rate
-        imu_t = video_t + imu_offset_s
+        video_t = frame_times_s[frame_index] if frame_times_s is not None else frame_index / frame_rate
+        pose_t = imu_query_times_s[frame_index] if imu_query_times_s is not None else video_t
+        imu_t = pose_t + imu_offset_s
         raw_q = interpolate_quat(imu_times, imu_quats, imu_t)
         smooth_q = interpolate_quat(imu_times, smoothed, imu_t)
+        if stabilization_mode == "horizon-lock":
+            smooth_q = horizon_locked_target(smooth_q)
         smooth_q = soft_elastic_clamp(raw_q, smooth_q, params.max_correction_deg)
-        correction = raw_q.mul(smooth_q.conjugate())
+        correction = stabilization_correction(raw_q, smooth_q)
         frames.append(
             FrameStabilization(
                 frame_index=frame_index,
@@ -129,4 +192,43 @@ def build_frame_stabilization(
             )
         )
     return frames
+
+
+def limit_correction_velocity(
+    frames: list[FrameStabilization],
+    frame_rate: float,
+    max_velocity_deg_s: float,
+) -> list[FrameStabilization]:
+    """Limit frame-to-frame correction motion to suppress IMU-driven jitter."""
+
+    if len(frames) <= 1 or frame_rate <= 0.0 or max_velocity_deg_s <= 0.0:
+        return list(frames)
+
+    limited = [frames[0]]
+    previous = Quat.from_iter(frames[0].correction_wxyz)
+    previous_time_s = frames[0].time_s
+    for frame in frames[1:]:
+        requested = Quat.from_iter(frame.correction_wxyz)
+        step_deg = previous.angular_distance_deg(requested)
+        dt_s = max(1e-9, frame.time_s - previous_time_s)
+        max_step_deg = max_velocity_deg_s * dt_s
+        correction = requested
+        if step_deg > max_step_deg:
+            correction = previous.slerp(requested, max_step_deg / step_deg)
+
+        raw = Quat.from_iter(frame.raw_wxyz)
+        target = raw.mul(correction)
+        limited.append(
+            FrameStabilization(
+                frame_index=frame.frame_index,
+                time_s=frame.time_s,
+                raw_wxyz=frame.raw_wxyz,
+                smooth_wxyz=target.as_tuple(),
+                correction_wxyz=correction.as_tuple(),
+                correction_matrix3=correction.to_matrix3(),
+            )
+        )
+        previous = correction
+        previous_time_s = frame.time_s
+    return limited
 
