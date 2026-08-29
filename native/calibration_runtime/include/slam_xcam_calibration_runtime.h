@@ -48,6 +48,8 @@ SLAM_CAL_API int32_t slam_cal_render_rgb24(
 );
 
 SLAM_CAL_API void slam_cal_destroy(SlamCalHandle handle);
+/* Optional ABI v1 extension. Returns the actual renderer used by this handle. */
+SLAM_CAL_API const char* slam_cal_backend_name(SlamCalHandle handle);
 SLAM_CAL_API const char* slam_cal_last_error(void);
 
 #ifdef __cplusplus

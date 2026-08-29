@@ -88,9 +88,7 @@ def run_job(job: StabilizationJob, progress: ProgressCallback | None = None) -> 
             calibration_source = "official_runtime"
             report(10, f"Official Calibration Runtime loaded: {candidate_runtime.info.version}")
         except CalibrationRuntimeUnavailable as exc:
-            raise CalibrationRuntimeUnavailable(
-                f"{exc} Select a measured custom calibration JSON to use the open renderer."
-            ) from exc
+            raise CalibrationRuntimeUnavailable(str(exc)) from exc
     gyro_units = calibration.gyro_units or profile.gyro_units
     imu_to_camera_rotation = calibration.raw.get("imu_to_camera_rotation") or profile.raw.get(
         "imu_to_camera_rotation"

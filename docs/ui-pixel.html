@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SLAM XCAM Studio</title>
+  <link rel="stylesheet" href="ui-concepts.css">
+</head>
+<body class="apple">
+  <main class="app">
+    <header class="titlebar">
+      <div class="brand"><span class="mark" aria-hidden="true"></span><h1>SLAM XCAM Studio</h1></div>
+      <span class="status" id="appStatus">Ready</span>
+    </header>
+    <div class="menu-bar">
+      <div class="menu-group">
+        <button class="menu-trigger" id="uiMenuTrigger" type="button" aria-expanded="false">菜单</button>
+        <div class="theme-menu" id="uiThemeMenu" role="menu">
+          <div class="menu-title">UI 设置</div>
+          <button class="theme-option" data-theme="apple" type="button" role="menuitemradio"><span>极简风</span><span class="theme-check">✓</span></button>
+          <button class="theme-option" data-theme="pixel" type="button" role="menuitemradio"><span>像素风</span><span class="theme-check">✓</span></button>
+        </div>
+      </div>
+    </div>
+    <nav class="primary-nav" aria-label="Application pages">
+      <button class="page-tab active" data-page="stabilizerPage" type="button">防抖处理</button>
+      <button class="page-tab" data-page="cameraPage" type="button">相机管理</button>
+      <button class="page-tab" data-page="editorPage" type="button">剪辑</button>
+    </nav>
+    <section class="app-page active" id="stabilizerPage">
+    <section class="workspace">
+      <aside class="panel settings">
+        <nav class="tabs" aria-label="Settings tabs">
+          <button class="tab active" data-tab="media" type="button">MEDIA<br>SETTING</button>
+          <button class="tab" data-tab="color" type="button">COLOR<br>CORRECTION</button>
+          <button class="tab" data-tab="strategy" type="button">算法策略</button>
+        </nav>
+        <div class="tab-content">
+          <section class="tab-panel active" id="media">
+            <div class="field"><label for="model">SLAM XCAM Model</label><select id="model"><option>2025</option><option selected>2026</option></select></div>
+            <div class="field"><label for="videoMode">Video Mode</label><select id="videoMode"><option>VR1803D 鱼眼</option><option>VR1803D 等轴距投影</option></select></div>
+            <div class="field"><label>Choose Video</label><div class="file-row"><input class="file-name" id="videoName" type="text" value="No video selected" readonly><button class="btn" id="chooseVideo" type="button">BROWSE</button></div><div class="hint">选择视频后自动匹配同目录的 .slamimu 或 _imu.csv。</div></div>
+            <div class="field"><label>Choose IMU</label><div class="file-row"><input class="file-name" id="imuName" type="text" value="Waiting for video" readonly><button class="btn" id="chooseImu" type="button">BROWSE</button></div></div>
+            <div class="match" id="matchState">[WAIT] SELECT SOURCE VIDEO</div>
+          </section>
+          <section class="tab-panel" id="color">
+            <div class="field"><label for="lut">LUT Library</label><select id="lut"><option>None</option><option>SLAM Natural</option><option>VR180 Soft Contrast</option><option>Indoor Warm</option><option>Outdoor Clear</option><option>Skin Tone Protect</option></select></div>
+            <div class="field"><div class="slider-head"><label for="exposure">Exposure</label><span class="slider-value" id="exposureValue">0.0 EV</span></div><input id="exposure" type="range" min="-20" max="20" value="0"></div>
+            <div class="field"><div class="slider-head"><label for="contrast">Contrast</label><span class="slider-value" id="contrastValue">0</span></div><input id="contrast" type="range" min="-50" max="50" value="0"></div>
+            <div class="field"><div class="slider-head"><label for="saturation">Saturation</label><span class="slider-value" id="saturationValue">0</span></div><input id="saturation" type="range" min="-50" max="50" value="0"></div>
+            <div class="field"><div class="slider-head"><label for="temperature">White Balance</label><span class="slider-value" id="temperatureValue">0</span></div><input id="temperature" type="range" min="-100" max="100" value="0"></div>
+          </section>
+          <section class="tab-panel" id="strategy">
+            <div class="field"><label>IMU 处理算法</label><select><option>6D VQF Orientation Fusion</option></select><div class="algo-box"><strong>6D VQF / ACTIVE</strong>融合陀螺仪与加速度计，按视频帧曝光时间插值姿态，并为 Rolling Shutter 生成逐行补偿。</div></div>
+            <div class="field"><label>图像处理算法</label><select><option>Reference Renderer</option><option>STMap Renderer</option></select><div class="algo-box"><strong>REFERENCE RENDERER</strong>使用镜头标定和姿态旋转矩阵执行 VR180 鱼眼重投影；优先独显，其次集显，最后 CPU。</div></div>
+            <div class="field"><label>防抖模式</label><select><option>地平线防抖模式</option></select><div class="algo-box"><strong>HORIZON LOCK</strong>抑制横滚并平滑俯仰、偏航变化，双目共用同一套 IMU 姿态补偿。</div></div>
+          </section>
+        </div>
+        <div class="start-area"><button class="btn primary" id="start" type="button">START STABILIZATION</button></div>
+      </aside>
+      <section class="panel preview">
+        <header class="preview-head">
+          <div class="preview-title"><h2 id="previewTitle">NO_VIDEO.MP4</h2><div class="meta" id="previewMeta">SLAM XCAM 2026 / VR1803D 鱼眼 / 6D VQF + Reference Renderer</div><div class="meta" id="folderMeta">Video folder: --<br>Save folder: source video folder</div></div>
+          <span class="status" id="sourceState">SOURCE OFFLINE</span>
+        </header>
+        <div class="viewer"><canvas id="scope"></canvas><video id="previewVideo" muted playsinline></video><span class="view-label">VR180 // SBS PREVIEW</span></div>
+        <div class="transport"><button class="btn" id="play" type="button" aria-label="Play or pause">▶</button><input id="timeline" type="range" min="0" max="1000" value="0"><span class="timecode" id="timecode">00:00 / 00:00</span></div>
+        <div class="job"><div class="progress-line"><span id="progressText">READY FOR INPUT</span><span id="progressPercent">0%</span></div><div class="bar"><div id="barFill"></div></div><div class="meta" id="timeMeta">ELAPSED 00:00 / ETA --:--</div></div>
+      </section>
+    </section>
+    <section class="panel log"><div class="log-head"><h2>JOB LOG</h2><span>LIVE OUTPUT</span></div><pre id="log">[00:00:00] UI initialized - waiting for video and IMU input...</pre></section>
+    </section>
+    <section class="app-page" id="cameraPage">
+      <section class="panel management-shell">
+        <header class="page-heading"><div><h2>相机管理</h2><p>连接、识别和维护 SLAM XCAM，相机参数仅在用户确认后写入设备。</p></div><button class="btn" id="cameraRefresh" type="button">REFRESH DEVICES</button></header>
+        <div class="camera-layout">
+          <aside class="device-list"><div class="section-cap"><h2>DEVICES</h2><span class="meta">1 DETECTED</span></div><button class="device-card" id="deviceInfoButton" type="button"><strong>SLAM XCAM 2026</strong><span>USB / READY / XC26-0018</span></button><div class="device-tools"><button class="device-tool" id="deviceFilesButton" type="button" title="读取设备文件"><span class="file-icon" aria-hidden="true"></span><span>DEVICE FILES</span><span class="tool-count">24</span></button></div></aside>
+          <section class="camera-detail" id="cameraInfoView"><div class="camera-hero"><span class="camera-glyph" aria-hidden="true"></span><div><h2>SLAM XCAM 2026</h2><div class="meta">STEREO VR1803D CAMERA / USB</div></div></div><div class="metric-grid"><div class="metric"><span>STATUS</span><strong id="cameraStatus">READY</strong></div><div class="metric"><span>BATTERY</span><strong>82%</strong></div><div class="metric"><span>STORAGE</span><strong>118 GB</strong></div><div class="metric"><span>TEMPERATURE</span><strong>41°C</strong></div></div><table class="setting-table"><tbody><tr><th>FIRMWARE</th><td>1.0.6</td></tr><tr><th>CAMERA MODEL</th><td>SLAM XCAM 2026</td></tr><tr><th>VIDEO FORMATS</th><td>4K / 8K · 30 / 50 fps</td></tr><tr><th>MOTION DATA</th><td>200 Hz · .slamimu</td></tr><tr><th>CALIBRATION</th><td>Official Runtime available</td></tr><tr><th>TIME SYNC</th><td>Video and IMU clock synchronized</td></tr></tbody></table><div class="action-row"><button class="btn primary" id="cameraConnect" type="button">DISCONNECT</button></div></section>
+          <section class="camera-detail device-files-view" id="deviceFilesView" hidden><header class="file-browser-head"><div><h2>DEVICE FILES</h2><div class="meta">SLAM XCAM 2026 / DCIM / SLAM_XCAM</div></div><div class="file-browser-actions"><button class="btn" id="refreshDeviceFiles" type="button">REFRESH</button><button class="btn primary" id="exportDeviceFiles" type="button" disabled>EXPORT SELECTED</button></div></header><div class="file-toolbar"><div class="file-filters"><button class="filter-btn active" data-filter="all" type="button">ALL</button><button class="filter-btn" data-filter="video" type="button">VIDEO</button><button class="filter-btn" data-filter="photo" type="button">PHOTO</button></div><label class="file-selection"><input id="selectAllDeviceFiles" type="checkbox"> SELECT ALL / <span id="selectedFileCount">0 SELECTED</span></label></div><div class="device-file-grid" id="deviceFileGrid"><label class="device-file video" data-kind="video"><input type="checkbox"><span class="file-preview">8K VR180</span><span class="file-description"><strong>Slam_20260827_142305.mp4</strong><span>8K / 02:18 / 3.8 GB</span></span></label><label class="device-file video" data-kind="video"><input type="checkbox"><span class="file-preview">4K VR180</span><span class="file-description"><strong>Slam_20260827_141842.mp4</strong><span>4K / 00:46 / 824 MB</span></span></label><label class="device-file photo" data-kind="photo"><input type="checkbox"><span class="file-preview">VR PHOTO</span><span class="file-description"><strong>Slam_20260827_141320.jpg</strong><span>7680 × 3840 / 18 MB</span></span></label><label class="device-file video" data-kind="video"><input type="checkbox"><span class="file-preview">8K VR180</span><span class="file-description"><strong>Slam_20260826_183155.mp4</strong><span>8K / 04:12 / 6.7 GB</span></span></label><label class="device-file photo" data-kind="photo"><input type="checkbox"><span class="file-preview">VR PHOTO</span><span class="file-description"><strong>Slam_20260826_181904.jpg</strong><span>7680 × 3840 / 21 MB</span></span></label><label class="device-file video" data-kind="video"><input type="checkbox"><span class="file-preview">4K VR180</span><span class="file-description"><strong>Slam_20260826_175522.mp4</strong><span>4K / 01:09 / 1.1 GB</span></span></label></div><div class="file-empty" id="fileEmptyState">NO FILES FOR THIS FILTER.</div></section>
+        </div>
+      </section>
+    </section>
+    <section class="app-page" id="editorPage">
+      <section class="panel editor-shell">
+        <header class="page-heading"><div><h2>剪辑</h2><p>对防抖输出进行基础剪切、色彩调整和 VR180 元数据导出。</p></div><button class="btn primary" id="editorExport" type="button">EXPORT VIDEO</button></header>
+        <div class="editor-layout">
+          <aside class="media-bin"><div class="section-cap"><h2>MEDIA</h2><button class="btn" id="editChoose" type="button">IMPORT</button></div><div class="media-drop">DROP VIDEO HERE<br><span class="meta">MP4 / MOV / HEVC</span></div><div class="clip-item"><span class="clip-thumb">VR</span><div><strong id="editClipName">stabilized_output.mp4</strong><div class="meta">00:24 / 3840 × 1920</div></div></div></aside>
+          <section class="editor-center"><div class="editor-toolbar"><span>PROGRAM MONITOR</span><span class="meta">FIT / 100%</span></div><div class="editor-stage"><div class="stage-lenses"><span class="stage-lens">LEFT</span><span class="stage-lens">RIGHT</span></div></div><div class="editor-transport"><button class="btn" type="button">▶</button><input type="range" min="0" max="1000" value="260"><span>00:06:12</span></div><div class="timeline-editor"><div class="timeline-ruler"><span>00:00</span><span>00:06</span><span>00:12</span><span>00:18</span><span>00:24</span></div><div class="track"><span class="track-label">V1</span><div class="track-lane"><div class="track-clip">stabilized_output.mp4</div></div></div><div class="track"><span class="track-label">A1</span><div class="track-lane"><div class="track-clip">CAMERA AUDIO</div></div></div></div></section>
+          <aside class="edit-inspector"><div class="section-cap"><h2>INSPECTOR</h2><span class="meta">CLIP</span></div><div class="inspector-group"><div class="field"><label>TRIM RANGE</label><div class="mini-fields"><input type="text" value="00:00:00"><input type="text" value="00:24:00"></div></div><div class="field"><label>SPEED</label><select><option>100%</option><option>50%</option><option>200%</option></select></div></div><div class="inspector-group"><div class="field"><label>OUTPUT FORMAT</label><select><option>VR180 3D · HEVC</option><option>VR180 3D · H.264</option></select></div><div class="field"><label>RESOLUTION</label><select><option>3840 × 1920</option><option>7680 × 3840</option></select></div><div class="field"><label><input type="checkbox" checked> WRITE VR180 METADATA</label></div></div></aside>
+        </div>
+      </section>
+    </section>
+    <input class="hidden-input" id="videoInput" type="file" accept="video/*">
+    <input class="hidden-input" id="imuInput" type="file" accept=".slamimu,.csv,.json,.xlsx">
+    <input class="hidden-input" id="editVideoInput" type="file" accept="video/*">
+  </main>
+  <script src="ui-concepts.js"></script>
+</body>
+</html>

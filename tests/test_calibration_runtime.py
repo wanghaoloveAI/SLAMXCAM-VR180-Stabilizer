@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 
 import pytest
 
@@ -11,6 +12,7 @@ from slam_stabilizer.calibration_runtime import (
     MANIFEST_FILENAME,
     RUNTIME_FILENAME,
     _load_and_verify_manifest,
+    discover_runtime,
 )
 
 
@@ -52,3 +54,15 @@ def test_runtime_reports_missing_installation(tmp_path, monkeypatch) -> None:
 
     with pytest.raises(CalibrationRuntimeUnavailable, match="was not found"):
         CalibrationRuntime()
+
+
+def test_frozen_app_discovers_bundled_runtime(tmp_path, monkeypatch) -> None:
+    runtime_dir = tmp_path / "calibration_runtime"
+    runtime_dir.mkdir()
+    bundled_dll = runtime_dir / RUNTIME_FILENAME
+    bundled_dll.write_bytes(b"bundled-runtime")
+    monkeypatch.delenv("SLAM_XCAM_CALIBRATION_RUNTIME", raising=False)
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "_MEIPASS", str(tmp_path), raising=False)
+
+    assert discover_runtime() == bundled_dll.resolve()

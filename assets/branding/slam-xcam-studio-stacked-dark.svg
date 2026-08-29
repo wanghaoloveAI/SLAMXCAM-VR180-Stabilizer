@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <style>
+    @font-face { font-family: SlamTechnic; src: url("file:///C:/Windows/Fonts/techb___.ttf"); }
+    .brand { font-family: SlamTechnic, "Arial Black", sans-serif; font-weight: 700; }
+    .studio { font-family: "Segoe UI", Arial, sans-serif; font-weight: 600; letter-spacing: 28px; }
+  </style>
+  <rect width="1024" height="1024" fill="#050505"/>
+  <text class="brand" x="512" y="404" fill="#f5f5f5" font-size="258" text-anchor="middle" textLength="780" lengthAdjust="spacingAndGlyphs">SLAM</text>
+  <text class="brand" x="512" y="650" fill="#f5f5f5" font-size="258" text-anchor="middle" textLength="780" lengthAdjust="spacingAndGlyphs">XCAM</text>
+  <text class="studio" x="526" y="760" fill="#8f8f8f" font-size="54" text-anchor="middle" textLength="650" lengthAdjust="spacingAndGlyphs">STUDIO</text>
+</svg>

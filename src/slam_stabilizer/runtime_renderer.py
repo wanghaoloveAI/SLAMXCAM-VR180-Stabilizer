@@ -47,8 +47,9 @@ def render_stabilized_sbs_runtime(
         distortion_correction=options.distortion_correction,
         field_of_view_deg=options.field_of_view_deg,
     )
+    actual_backend = renderer.backend_name
     if progress:
-        progress(82, f"Official Calibration Runtime active: {runtime.info.version}")
+        progress(82, f"Official Calibration Runtime active: {runtime.info.version} | {actual_backend}")
 
     decode_args = [
         "ffmpeg", "-v", "error", "-i", str(input_video), "-an",
@@ -142,7 +143,7 @@ def render_stabilized_sbs_runtime(
         raise RuntimeError(f"FFmpeg encode failed: {encode_stderr}")
     return RuntimeRenderResult(
         renderer_name=f"Official Calibration Runtime {runtime.info.version}",
-        api=f"Native ABI {ABI_LABEL}",
+        api=actual_backend,
     )
 
 

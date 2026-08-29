@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SLAM XCAM Studio Logo</title>
+<style>
+  @font-face {
+    font-family: "SLAM Technic";
+    src: url("file:///C:/Windows/Fonts/techb___.ttf") format("truetype");
+    font-weight: 700;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: #e8e8e8;
+    color: #111;
+    font-family: "Segoe UI", Arial, sans-serif;
+  }
+  main { padding: 48px; }
+  h1 { margin: 0 0 8px; font-size: 18px; font-weight: 600; }
+  .note { margin: 0 0 32px; color: #666; font-size: 13px; }
+  .board {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(360px, 1fr));
+    border: 1px solid #bdbdbd;
+    background: #fff;
+  }
+  .sample {
+    min-height: 480px;
+    display: grid;
+    place-items: center;
+    padding: 56px;
+  }
+  .sample + .sample { border-left: 1px solid #bdbdbd; }
+  .sample.dark { background: #050505; }
+  .sample.light { background: #f7f7f7; }
+  .stacked {
+    width: 330px;
+    text-align: center;
+    font-family: "SLAM Technic", "Arial Black", sans-serif;
+    font-weight: 700;
+    line-height: .82;
+  }
+  .stacked .brand {
+    display: block;
+    font-size: 92px;
+    letter-spacing: 2px;
+    transform: scaleX(1.08);
+    transform-origin: center;
+  }
+  .stacked .product {
+    display: block;
+    margin-top: 13px;
+    font-size: 92px;
+    letter-spacing: 2px;
+    transform: scaleX(1.08);
+    transform-origin: center;
+  }
+  .stacked .descriptor {
+    display: block;
+    margin-top: 28px;
+    padding-left: 12px;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 12px;
+  }
+  .dark .brand, .dark .product { color: #f5f5f5; }
+  .dark .descriptor { color: #8f8f8f; }
+  .light .brand, .light .product { color: #151515; }
+  .light .descriptor { color: #737373; }
+  .horizontal-zone {
+    margin-top: 28px;
+    border: 1px solid #bdbdbd;
+    background: #fff;
+    padding: 30px 38px;
+  }
+  .horizontal {
+    display: inline-flex;
+    align-items: center;
+    color: #151515;
+  }
+  .horizontal .main {
+    font-family: "SLAM Technic", "Arial Black", sans-serif;
+    font-size: 38px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+  .horizontal .studio {
+    margin-left: 30px;
+    color: #666;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 7px;
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>SLAM XCAM STUDIO</h1>
+  <p class="note">Primary stacked mark and desktop header lockup</p>
+  <section class="board">
+    <div class="sample dark">
+      <div class="stacked" aria-label="SLAM XCAM STUDIO">
+        <span class="brand">SLAM</span>
+        <span class="product">XCAM</span>
+        <span class="descriptor">STUDIO</span>
+      </div>
+    </div>
+    <div class="sample light">
+      <div class="stacked" aria-label="SLAM XCAM STUDIO">
+        <span class="brand">SLAM</span>
+        <span class="product">XCAM</span>
+        <span class="descriptor">STUDIO</span>
+      </div>
+    </div>
+  </section>
+  <section class="horizontal-zone">
+    <div class="horizontal" aria-label="SLAM XCAM STUDIO">
+      <span class="main">SLAM XCAM</span>
+      <span class="studio">STUDIO</span>
+    </div>
+  </section>
+</main>
+</body>
+</html>

@@ -25,7 +25,7 @@ def _working_path(relative: str) -> Path:
 class App(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
-        self.title("SLAM XCAM VR180 Stabilizer Prototype")
+        self.title("SLAM XCAM Studio")
         self.geometry("780x520")
         self.resizable(True, True)
         self._messages: queue.Queue[str] = queue.Queue()

@@ -62,7 +62,7 @@ def run_prototype() -> None:
 
 
 def main() -> int:
-    print("SLAM XCAM VR180 Stabilizer Prototype")
+    print("SLAM XCAM Studio")
     print("This is not the final stabilized renderer yet.")
     print()
     while True:

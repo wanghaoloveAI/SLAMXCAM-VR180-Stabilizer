@@ -1,8 +1,8 @@
-# SLAM XCAM VR180 Stabilizer
+# SLAM XCAM Studio
 
 Windows-first stabilizer prototype for SLAM XCAM VR180 3D footage.
 
-This repository contains the open-source Windows application, PySide6 desktop
+This repository contains the open-source SLAM XCAM Studio Windows application, PySide6 desktop
 UI, 6D VQF IMU processing, horizon stabilization, two-iteration rolling-shutter
 correction, and CPU/OpenGL Reference Renderers.
 
@@ -19,9 +19,10 @@ The current prototype is mainly written in Python:
 - official calibration boundary: versioned native C ABI loaded with `ctypes`
 
 The application code is Apache-2.0 open source. Official measured SLAM XCAM
-2025/2026 calibration and its native renderer are distributed separately as a
-proprietary Calibration Runtime DLL. Users can instead supply their own JSON
-calibration and use the fully open CPU/OpenGL renderer.
+2025/2026 calibration and its native renderer are bundled as a proprietary
+Calibration Runtime DLL whose source and embedded parameters are not open.
+Users can instead supply their own JSON calibration and use the fully open
+CPU/OpenGL renderer.
 
 This project targets two input modes:
 
@@ -35,7 +36,7 @@ It also models two lens profiles:
 
 Calibration support:
 
-- Official models automatically use the separately installed Calibration Runtime.
+- Official models automatically use the bundled Calibration Runtime.
 - The runtime ABI is public, but official K/D parameters and runtime source are not.
 - Custom measured JSON calibration remains supported by the open renderer.
 - See [docs/CALIBRATION_RUNTIME.md](docs/CALIBRATION_RUNTIME.md).
@@ -53,8 +54,8 @@ Current capabilities:
 
 Current limitations:
 
-- Official Calibration Runtime GPU acceleration is still planned; its initial
-  native implementation prioritizes isolation and output parity.
+- Official Calibration Runtime 1.1 uses D3D11 Compute when supported and
+  reports the actual GPU backend to the application.
 - FFmpeg decode/encode is not yet hardware accelerated or zero-copy.
 - Dual left/right 1:1 fisheye input is planned but not fully rendered yet.
 
@@ -81,6 +82,23 @@ python -m slam_stabilizer.cli --input-sbs "D:\path\input.mp4" --imu "D:\path\imu
 If running from source, set `PYTHONPATH=src` or use the provided `.bat` and
 PowerShell launchers. Set `PYTHON_EXE` only when the desired Python executable
 is not available as `python` in `PATH`.
+
+## Windows Portable Release
+
+End users should download the complete `SLAM_XCAM_Studio_vXX_Portable.zip`
+release, extract it, and run `SLAM_XCAM_Studio.exe` from the extracted folder.
+Do not distribute or move the EXE by itself: video processing and camera
+management use the adjacent portable tools.
+
+The portable layout includes:
+
+- `tools/ffmpeg/bin/ffmpeg.exe` and `ffprobe.exe`
+- `tools/platform-tools/adb.exe` and its required Windows DLLs
+- `licenses/` with the corresponding third-party licenses and notices
+
+The application prefers these bundled tools and falls back to tools installed
+on the system. Python, Rust, Android Studio, and a separate FFmpeg installation
+are not required for portable-release users.
 
 ## Expected IMU File
 
@@ -137,7 +155,7 @@ See [config/calibration.schema.json](config/calibration.schema.json).
 
 Custom calibration JSON stores user-provided lens intrinsics, distortion
 coefficients, stereo extrinsics, and optional IMU-to-camera rotation. When no
-custom JSON is selected, export requires the separately installed official
+custom JSON is selected, export requires the bundled official
 Calibration Runtime. Public example files are documentation only and cannot be
 used for export.
 
@@ -153,7 +171,7 @@ Current prototype requires:
 Build a Windows GUI executable:
 
 ```powershell
-python -m PyInstaller --noconfirm --clean --onefile --windowed --name SLAM_XCAM_Stabilizer_GUI --paths src --add-data "config;config" SLAM_XCAM_Stabilizer_Qt.pyw
+python -m PyInstaller --noconfirm --clean SLAM_XCAM_Studio.spec
 ```
 
 Recommended long-term production stack:
@@ -167,6 +185,6 @@ Recommended long-term production stack:
 
 Apache License 2.0. See [LICENSE](LICENSE).
 
-The separately distributed official Calibration Runtime and embedded measured
+The bundled official Calibration Runtime and embedded measured
 calibration are proprietary and excluded from Apache-2.0. See
 [OFFICIAL_RUNTIME_LICENSE_NOTICE.md](OFFICIAL_RUNTIME_LICENSE_NOTICE.md).

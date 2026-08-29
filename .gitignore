@@ -12,6 +12,7 @@ venv/
 build/
 dist/
 *.spec
+!SLAM_XCAM_Studio.spec
 
 # Generated outputs and local media samples
 outputs/
@@ -38,6 +39,7 @@ private_calibrations/
 *.jpg
 *.jpeg
 *.png
+!/assets/branding/*.png
 *_imu.csv
 *_pair_report.json
 *.plan.json

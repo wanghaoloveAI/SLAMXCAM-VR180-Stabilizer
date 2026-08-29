@@ -38,6 +38,8 @@ def runtime_search_directories() -> list[Path]:
         configured_path = Path(configured).expanduser().resolve()
         directories.append(configured_path.parent if configured_path.is_file() else configured_path)
     if getattr(sys, "frozen", False):
+        bundle_root = Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent))
+        directories.append(bundle_root / "calibration_runtime")
         directories.append(Path(sys.executable).resolve().parent / "calibration_runtime")
     repository_root = Path(__file__).resolve().parents[2]
     directories.extend(
@@ -91,8 +93,7 @@ class CalibrationRuntime:
         path = (dll_path or discover_runtime())
         if path is None:
             raise CalibrationRuntimeUnavailable(
-                "Official Calibration Runtime was not found. Install it in the calibration_runtime folder "
-                "or select a custom calibration JSON file."
+                "The built-in Calibration Runtime was not found. Reinstall the complete SLAM XCAM Studio package."
             )
         self.path = Path(path).resolve()
         manifest = _load_and_verify_manifest(self.path)
@@ -137,6 +138,9 @@ class CalibrationRuntime:
         ]
         lib.slam_cal_render_rgb24.restype = ctypes.c_int32
         lib.slam_cal_destroy.argtypes = [ctypes.c_void_p]
+        if hasattr(lib, "slam_cal_backend_name"):
+            lib.slam_cal_backend_name.argtypes = [ctypes.c_void_p]
+            lib.slam_cal_backend_name.restype = ctypes.c_char_p
         lib.slam_cal_last_error.restype = ctypes.c_char_p
 
     def supports(self, camera_model: str) -> bool:
@@ -180,6 +184,14 @@ class CalibrationRuntimeRenderer:
         self.runtime = runtime
         self.handle = handle
         self.eye_size = eye_size
+
+    @property
+    def backend_name(self) -> str:
+        function = getattr(self.runtime.library, "slam_cal_backend_name", None)
+        if function is None:
+            return "Native CPU"
+        value = function(self.handle)
+        return value.decode("utf-8", errors="replace") if value else "Unknown native backend"
 
     def render(
         self,
