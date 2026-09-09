@@ -1,6 +1,6 @@
 # SLAM XCAM Studio
 
-Windows-first stabilizer prototype for SLAM XCAM VR180 3D footage.
+Windows desktop application for stabilizing SLAM XCAM VR180 3D footage.
 
 This repository contains the open-source SLAM XCAM Studio Windows application, PySide6 desktop
 UI, 6D VQF IMU processing, three-axis and horizon stabilization, two-iteration rolling-shutter
@@ -8,7 +8,7 @@ correction, and CPU/OpenGL Reference Renderers.
 
 ## Implementation Stack
 
-The current prototype is mainly written in Python:
+The application is mainly written in Python:
 
 - GUI: PySide6 / Qt for Python
 - video analysis and stabilization pipeline: Python
@@ -43,7 +43,7 @@ Calibration support:
 
 Current capabilities:
 
-- PySide6 Windows GUI inspired by Gyroflow and DJI Studio
+- PySide6 Windows desktop GUI
 - SBS 2:1 fisheye input analysis
 - SLAM motion container plus legacy 50 Hz / 200 Hz IMU table parsing
 - 6D VQF gyro/accelerometer fusion
@@ -52,7 +52,7 @@ Current capabilities:
 - per-frame correction matrix generation
 - two-iteration per-row rolling-shutter correction
 - CPU and OpenGL 3.3 SBS fisheye reprojection renderers
-- prototype H.264 MP4 output with VR180/SBS metadata tags
+- H.264 MP4 output with VR180/SBS metadata tags
 
 Current limitations:
 
@@ -129,10 +129,6 @@ See [docs/IMU_FORMAT.md](docs/IMU_FORMAT.md).
 See [docs/IMU_PROCESSING_STRATEGIES.md](docs/IMU_PROCESSING_STRATEGIES.md)
 for the first three IMU processing strategies.
 
-## Reference Direction
-
-
-
 ## Prototype Commands
 
 Inspect a real IMU file:
@@ -159,7 +155,7 @@ used for export.
 
 ## Windows Build Environment
 
-Current prototype requires:
+Building from source requires:
 
 - FFmpeg in PATH
 - Python 3.12
@@ -171,13 +167,6 @@ Build a Windows GUI executable:
 ```powershell
 python -m PyInstaller --noconfirm --clean SLAM_XCAM_Studio.spec
 ```
-
-Recommended long-term production stack:
-
-- Rust core for IMU integration, lens model, and GPU reprojection
-- wgpu for cross-platform GPU rendering
-- egui or Tauri for Windows desktop UI
-- FFmpeg for decode/encode/remux
 
 ## License
 
