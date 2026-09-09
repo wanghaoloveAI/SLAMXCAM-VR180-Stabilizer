@@ -131,11 +131,7 @@ for the first three IMU processing strategies.
 
 ## Reference Direction
 
-This project was structured after reviewing
-[silverqsy/VR180-Silver-Bullet](https://github.com/silverqsy/VR180-Silver-Bullet).
-The reference repo is not vendored here; see
-[docs/REFERENCE_VR180_SILVER_BULLET.md](docs/REFERENCE_VR180_SILVER_BULLET.md)
-for the architecture notes we are borrowing and adapting.
+
 
 ## Prototype Commands
 
