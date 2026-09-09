@@ -226,6 +226,12 @@ from slam_stabilizer.qt_gui import MainWindow
 
 app = QApplication([])
 window = MainWindow()
+for mode in ("normal", "horizon-lock", "orientation-lock"):
+    index = window.stabilization_mode_label.findData(mode)
+    assert index >= 0
+    window.stabilization_mode_label.setCurrentIndex(index)
+    assert window._payload()["stabilization_mode"] == mode
+    assert window.stabilization_mode_info.text()
 window._apply_theme("minimal", persist=False)
 labels = [label.text() for label in window.findChildren(QLabel)]
 minimal_style = window.styleSheet()

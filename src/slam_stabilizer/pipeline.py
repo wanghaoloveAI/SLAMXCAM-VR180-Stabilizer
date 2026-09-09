@@ -42,7 +42,7 @@ class StabilizationJob:
     ffmpeg: str = "ffmpeg"
     imu_offset_s: float = -0.167
     gyro_scale: float = 0.45
-    max_correction_velocity_deg_s: float = 25.0
+    max_correction_velocity_deg_s: float = 0.0
     smooth_ms: float = 1000.0
     max_correction_deg: float = 15.0
     imu_algorithm: str = "gyro-integration-smoothing"
@@ -134,7 +134,7 @@ def run_job(job: StabilizationJob, progress: ProgressCallback | None = None) -> 
             )
         effective_imu_offset_s = 0.0
         effective_gyro_scale = 1.0
-        effective_max_correction_velocity_deg_s = 200.0
+        effective_max_correction_velocity_deg_s = job.max_correction_velocity_deg_s
         imu_time_origin_s = slamimu_data.timestamp_origin_ns / 1_000_000_000.0
         frame_timing_source = "slamimu video_frames.sensor_timestamp_ns"
         dropped_intervals = sum(
@@ -186,6 +186,16 @@ def run_job(job: StabilizationJob, progress: ProgressCallback | None = None) -> 
     effective_max_correction_deg = 90.0 if stabilization_mode == "horizon-lock" else job.max_correction_deg
 
     report(45, "Building per-frame IMU stabilization plan")
+    report(45, f"Stabilization mode: {stabilization_mode}; shared stereo pose; "
+           f"correction speed limit: {effective_max_correction_velocity_deg_s:g} deg/s (0 = disabled)")
+    query_times = frame_pose_times_s if frame_pose_times_s is not None else [
+        i / video_params.frame_rate for i in range(video_params.frame_count)
+    ]
+    uncovered = sum(t + effective_imu_offset_s < imu_times[0] or
+                    t + effective_imu_offset_s > imu_times[-1] for t in query_times)
+    if uncovered:
+        report(45, f"Warning: {uncovered}/{len(query_times)} frame poses are outside IMU coverage; "
+               "endpoint poses will be held. Check video/IMU pairing and synchronization.")
     frame_plan = build_frame_stabilization(
         imu_times=imu_times,
         imu_quats=imu_quats,

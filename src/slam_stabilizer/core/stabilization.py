@@ -169,7 +169,18 @@ def build_frame_stabilization(
         frame_count = len(frame_times_s)
     if frame_count <= 0 or frame_rate <= 0:
         return []
+    if stabilization_mode not in {"normal", "horizon-lock", "orientation-lock"}:
+        raise ValueError(f"Unknown stabilization mode: {stabilization_mode}")
+    if not imu_times or len(imu_times) != len(imu_quats):
+        raise ValueError("IMU timestamps and orientations must be nonempty and matched.")
+    if any(b <= a for a, b in zip(imu_times, imu_times[1:])):
+        raise ValueError("IMU timestamps must be strictly increasing.")
+    if imu_query_times_s is not None and len(imu_query_times_s) != frame_count:
+        raise ValueError("Exposure timestamps must match video frame count.")
     smoothed = bidirectional_smooth(imu_times, imu_quats, params)
+    anchor_time = (imu_query_times_s[0] if imu_query_times_s is not None else
+                   frame_times_s[0] if frame_times_s is not None else 0.0)
+    anchor = interpolate_quat(imu_times, smoothed, anchor_time + imu_offset_s)
     frames: list[FrameStabilization] = []
     for frame_index in range(frame_count):
         video_t = frame_times_s[frame_index] if frame_times_s is not None else frame_index / frame_rate
@@ -177,9 +188,14 @@ def build_frame_stabilization(
         imu_t = pose_t + imu_offset_s
         raw_q = interpolate_quat(imu_times, imu_quats, imu_t)
         smooth_q = interpolate_quat(imu_times, smoothed, imu_t)
-        if stabilization_mode == "horizon-lock":
+        if stabilization_mode == "orientation-lock":
+            smooth_q = anchor
+        elif stabilization_mode == "horizon-lock":
+            # Limit following motion before leveling: clamping afterwards restores roll.
+            smooth_q = soft_elastic_clamp(raw_q, smooth_q, params.max_correction_deg)
             smooth_q = horizon_locked_target(smooth_q)
-        smooth_q = soft_elastic_clamp(raw_q, smooth_q, params.max_correction_deg)
+        else:
+            smooth_q = soft_elastic_clamp(raw_q, smooth_q, params.max_correction_deg)
         correction = stabilization_correction(raw_q, smooth_q)
         frames.append(
             FrameStabilization(

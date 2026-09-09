@@ -3,7 +3,7 @@
 Windows-first stabilizer prototype for SLAM XCAM VR180 3D footage.
 
 This repository contains the open-source SLAM XCAM Studio Windows application, PySide6 desktop
-UI, 6D VQF IMU processing, horizon stabilization, two-iteration rolling-shutter
+UI, 6D VQF IMU processing, three-axis and horizon stabilization, two-iteration rolling-shutter
 correction, and CPU/OpenGL Reference Renderers.
 
 ## Implementation Stack
@@ -46,7 +46,9 @@ Current capabilities:
 - PySide6 Windows GUI inspired by Gyroflow and DJI Studio
 - SBS 2:1 fisheye input analysis
 - SLAM motion container plus legacy 50 Hz / 200 Hz IMU table parsing
-- 6D VQF gyro/accelerometer fusion and horizon-lock smoothing
+- 6D VQF gyro/accelerometer fusion
+- three-axis smoothing, horizon lock, and fixed-orientation stabilization modes
+- one shared correction pose for both stereo eyes
 - per-frame correction matrix generation
 - two-iteration per-row rolling-shutter correction
 - CPU and OpenGL 3.3 SBS fisheye reprojection renderers

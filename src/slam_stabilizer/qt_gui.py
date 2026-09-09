@@ -138,7 +138,7 @@ UI_TEXT = {
     "backend_discrete": {"en": "Prefer discrete GPU", "zh_CN": "优先独显 GPU"},
     "backend_integrated": {"en": "Prefer integrated GPU", "zh_CN": "优先集显"},
     "backend_cpu": {"en": "CPU only", "zh_CN": "仅 CPU"},
-    "pipeline_summary": {"en": "6D VQF · Reference Renderer · Horizon Lock", "zh_CN": "6D VQF · Reference Renderer · 地平线锁定"},
+    "pipeline_summary": {"en": "6D VQF · Reference Renderer", "zh_CN": "6D VQF · Reference Renderer"},
     "duration": {"en": "Duration", "zh_CN": "时长"},
     "resolution": {"en": "Resolution", "zh_CN": "分辨率"},
     "active_imu": {"en": "6D VQF Gyroscope + Accelerometer Fusion", "zh_CN": "6D VQF 陀螺 + 加速度融合"},
@@ -146,7 +146,7 @@ UI_TEXT = {
     "active_horizon": {"en": "Horizon Lock", "zh_CN": "地平线防抖模式"},
     "imu_info": {"en": "Official PyVQF fuses 200 Hz gyroscope and accelerometer data without magnetometer input, including bias estimation and rest detection. This is the active pipeline algorithm.", "zh_CN": "官方 PyVQF 对 200Hz 陀螺和加速度做无磁姿态融合、零偏估计和静止检测。当前 pipeline 固定使用此算法。"},
     "image_info": {"en": "Output pixels are converted to VR180 rays, corrected with one shared stereo IMU rotation, then projected back into the source fisheye using measured K/D calibration. OpenGL GPU is preferred with automatic CPU fallback.", "zh_CN": "输出像素转换为 VR180 ray，应用同一套双目 IMU 防抖旋转，再通过真实镜头 K/D 参数投影回源鱼眼。优先使用 OpenGL GPU，GPU 不可用时自动回退 CPU。"},
-    "horizon_info": {"en": "The active mode smooths camera orientation and locks roll to stabilize the horizon. Other stabilization modes are not part of the production pipeline yet.", "zh_CN": "当前只开发地平线防抖：平滑相机姿态并锁定横滚。普通防抖和其他模式暂不进入正式 pipeline。"},
+    "horizon_info": {"en": "Choose three-axis smoothing, horizon lock, or fixed orientation. Both eyes use the same correction pose.", "zh_CN": "支持三轴平滑、地平线防抖和固定朝向；左右眼共用同一套矫正姿态。"},
     "video_folder": {"en": "Video folder", "zh_CN": "视频文件夹"},
     "save_folder": {"en": "Save folder", "zh_CN": "保存文件夹"},
     "job_log": {"en": "Job Log", "zh_CN": "任务日志"},
@@ -925,7 +925,7 @@ class Worker(QObject):
                 smooth_ms=float(self.payload.get("smooth_ms", "1000") or 1000),
                 max_correction_deg=float(self.payload.get("max_correction_deg", "15") or 15),
                 imu_algorithm=ACTIVE_IMU_ALGORITHM,
-                stabilization_mode=ACTIVE_STABILIZATION_MODE,
+                stabilization_mode=self.payload.get("stabilization_mode", ACTIVE_STABILIZATION_MODE),
                 image_algorithm=ACTIVE_IMAGE_ALGORITHM,
                 distortion_correction=self.payload.get("distortion_correction", "true") == "true",
                 field_of_view_deg=float(self.payload.get("field_of_view_deg", "180") or 180),
@@ -1100,10 +1100,15 @@ class MainWindow(QMainWindow):
         self.image_algorithm_info = QLabel()
         self.image_algorithm_info.setWordWrap(True)
 
-        self.stabilization_mode_label = QLabel(ACTIVE_STABILIZATION_MODE_LABEL)
+        self.stabilization_mode_label = QComboBox()
+        self.stabilization_mode_label.addItem("Horizon Lock", "horizon-lock")
+        self.stabilization_mode_label.addItem("Three-axis Smooth", "normal")
+        self.stabilization_mode_label.addItem("Fixed Orientation", "orientation-lock")
         self.stabilization_mode_label.setObjectName("fixedAlgorithm")
         self.stabilization_mode_info = QLabel()
         self.stabilization_mode_info.setWordWrap(True)
+        self.stabilization_mode_label.currentIndexChanged.connect(self._refresh_algorithm_info)
+        self.stabilization_mode_label.currentIndexChanged.connect(self._refresh_preview_details)
 
         for field in [
             self.sbs,
@@ -1858,7 +1863,9 @@ class MainWindow(QMainWindow):
 
         self.imu_algorithm_label.setText(self._tr("active_imu"))
         self.image_algorithm_label.setText(self._tr("active_image"))
-        self.stabilization_mode_label.setText(self._tr("active_horizon"))
+        self.stabilization_mode_label.setItemText(0, self._tr("active_horizon"))
+        self.stabilization_mode_label.setItemText(1, "三轴平滑防抖" if self.language == "zh_CN" else "Three-axis Smooth")
+        self.stabilization_mode_label.setItemText(2, "固定朝向" if self.language == "zh_CN" else "Fixed Orientation")
         self._refresh_algorithm_info()
         self._refresh_preview_details()
         self._retranslate_device_file_items()
@@ -2178,7 +2185,13 @@ class MainWindow(QMainWindow):
     def _refresh_algorithm_info(self) -> None:
         self.imu_algorithm_info.setText(self._tr("imu_info"))
         self.image_algorithm_info.setText(self._tr("image_info"))
-        self.stabilization_mode_info.setText(self._tr("horizon_info"))
+        descriptions = {
+            "normal": ("Smooths yaw, pitch and roll while following camera movement. Both eyes share one target pose.", "平滑偏航、俯仰和横滚，保留运镜趋势。双目共用一套目标姿态。"),
+            "horizon-lock": ("Smooths camera movement and levels roll using gravity. Large corrections may reveal unrecorded edges.", "平滑运镜并依据重力锁定横滚水平。大角度矫正可能露出未拍摄的边缘区域。"),
+            "orientation-lock": ("Keeps the initial smoothed orientation fixed on all three axes. Large turns may reveal black edges; translation is not corrected.", "固定初始平滑朝向，抵消三轴转动。大幅转向可能出现黑边，不矫正平移。"),
+        }
+        description = descriptions[self.stabilization_mode_label.currentData()]
+        self.stabilization_mode_info.setText(description[1 if self.language == "zh_CN" else 0])
 
     def _auto_match_imu(self, video: Path, force: bool = False) -> None:
         if not video:
@@ -2288,7 +2301,8 @@ class MainWindow(QMainWindow):
         self.preview_stats.setText(
             f"{self.model.currentText()}  /  {self.video_mode.currentText()}  /  "
             f"{self.field_of_view.currentText()}  /  {self._tr('distortion')} {self.distortion_correction.currentText()}\n"
-            f"{self._tr('pipeline_summary')}  /  {self._tr(backend_key)}\n"
+            f"{self._tr('pipeline_summary')}  /  {self.stabilization_mode_label.currentText()}  /  "
+            f"{self._tr(backend_key)}\n"
             f"{self._tr('duration')} {self.video_duration_text}  /  "
             f"{self._tr('resolution')} {self.video_size_text}\n"
             f"{self._tr('video_folder')}: {video_folder}\n"
@@ -2391,7 +2405,7 @@ class MainWindow(QMainWindow):
             "lut": self.lut.currentData(),
             "imu_algorithm": ACTIVE_IMU_ALGORITHM,
             "image_algorithm": ACTIVE_IMAGE_ALGORITHM,
-            "stabilization_mode": ACTIVE_STABILIZATION_MODE,
+            "stabilization_mode": self.stabilization_mode_label.currentData(),
         }
 
     def inspect_pair(self) -> None:
